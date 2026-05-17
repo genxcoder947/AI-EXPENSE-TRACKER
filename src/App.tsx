@@ -9,6 +9,8 @@ import { generateInsights, calculateCategoryTotals } from './utils/aiEngine';
 import { sortExpensesByDate } from './utils/helpers';
 import { CategoryPieChart } from './components/CategoryPieChart';
 import { Sparkles, Moon, Sun } from 'lucide-react';
+import Login from './components/auth/Login';
+import { getCurrentUser, loginUser, logout, registerUser } from './lib/auth';
 
 export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>(() => {
@@ -21,6 +23,8 @@ export default function App() {
     return saved === 'dark';
   });
 
+  const [user, setUser] = useState(() => getCurrentUser());
+
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -32,6 +36,36 @@ export default function App() {
 
   const toggleTheme = () => {
     setDarkMode(prev => !prev);
+  };
+
+  const handleLogin = (email: string, password: string) => {
+    const user = loginUser(email, password);
+    if (user) {
+      setUser(user);
+      // Clear expenses for new user
+      setExpenses([]);
+    } else {
+      // In a real app, we would show an error
+      alert('Invalid credentials');
+    }
+  };
+
+  const handleSignUp = (email: string, password: string) => {
+    const newUser = registerUser(email, password);
+    if (newUser) {
+      setUser(newUser);
+      // Clear expenses for new user
+      setExpenses([]);
+    } else {
+      alert('User already exists with this email');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setUser(null);
+    // Clear expenses on logout
+    setExpenses([]);
   };
 
   const handleAddExpense = (expense: Expense) => {
@@ -52,6 +86,11 @@ export default function App() {
 
   const insights = generateInsights(expenses);
   const categoryTotals = calculateCategoryTotals(expenses);
+
+  // If no user, show login page
+  if (!user) {
+    return <Login onLogin={handleLogin} onSignUp={handleSignUp} />;
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900">
@@ -74,6 +113,9 @@ export default function App() {
               </span>
               <button onClick={toggleTheme} className="p-2 rounded bg-slate-100 dark:bg-slate-600 hover:bg-slate-200 dark:hover:bg-slate-50">
                 {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-yellow-400" />}
+              </button>
+              <button onClick={handleLogout} className="p-2 rounded bg-red-100 text-red-700 dark:bg-red-200 dark:text-red-800 hover:bg-red-200 dark:hover:bg-red-300">
+                Logout
               </button>
             </div>
           </div>

@@ -122,7 +122,7 @@ export function StatsOverview({ expenses }: StatsOverviewProps) {
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-3xl rounded-xl bg-white p-5 shadow-xl">
+          <div className="w-full max-w-3xl rounded-xl bg-white dark:bg-slate-800 p-5 shadow-xl text-slate-900 dark:text-slate-100">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">{detailTitles[activeDetail]}</h3>

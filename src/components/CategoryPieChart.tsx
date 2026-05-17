@@ -413,7 +413,7 @@ export function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-5xl rounded-xl bg-white shadow-xl p-5 chart-modal-panel">
+          <div className="w-full max-w-5xl rounded-xl bg-white dark:bg-slate-800 shadow-xl p-5 chart-modal-panel text-slate-900 dark:text-slate-100">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div className="min-w-0">
                 <CardTitle className="text-lg font-semibold text-slate-800">

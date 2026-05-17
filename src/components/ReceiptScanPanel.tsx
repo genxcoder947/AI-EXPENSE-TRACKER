@@ -380,7 +380,7 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
           aria-modal="true"
           aria-labelledby={galleryInputId + '-webcam-title'}
         >
-          <div className="relative w-full max-w-lg rounded-xl bg-white p-4 shadow-xl">
+          <div className="relative w-full max-w-lg rounded-xl bg-white dark:bg-slate-800 p-4 shadow-xl text-slate-900 dark:text-slate-100">
             <div className="flex items-center justify-between gap-2 mb-3">
               <p id={galleryInputId + '-webcam-title'} className="font-semibold text-slate-800">
                 Point at your receipt
