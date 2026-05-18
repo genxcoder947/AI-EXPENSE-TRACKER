@@ -15,15 +15,15 @@ type Slice = {
 };
 
 const COLORS = [
-  '#10B981', // emerald
-  '#3B82F6', // blue
-  '#F59E0B', // amber
-  '#8B5CF6', // violet
-  '#F43F5E', // rose
-  '#06B6D4', // cyan
-  '#F97316', // orange
-  '#6366F1', // indigo
-  '#64748B', // slate
+  'var(--chart-emerald)',
+  'var(--chart-blue)',
+  'var(--chart-amber)',
+  'var(--chart-violet)',
+  'var(--chart-rose)',
+  'var(--chart-cyan)',
+  'var(--chart-orange)',
+  'var(--chart-indigo)',
+  'var(--chart-slate)',
 ];
 
 function parseDateOnly(dateString: string): Date {
@@ -194,6 +194,7 @@ function PieSvg({
   const cx = size / 2;
   const cy = size / 2;
   const centerText = total > 0 ? formatCurrency(total) : 'No data';
+  const centerRadius = Math.max(18, r - stroke / 2 - 6);
 
   let currentAngle = 0;
   const piePaths = slices.map((s, index) => {
@@ -263,14 +264,28 @@ function PieSvg({
       viewBox={`0 0 ${size} ${size}`}
       className={animate ? 'pie-chart-pop' : undefined}
     >
-      <circle cx={cx} cy={cy} r={r} stroke="#E2E8F0" strokeWidth={stroke} fill="none" />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        stroke="var(--chart-track)"
+        strokeWidth={stroke}
+        fill="none"
+      />
       {piePaths}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={centerRadius}
+        className="fill-white dark:fill-slate-950"
+        opacity={0.82}
+      />
       <text
         x={cx}
         y={cy - 6}
         textAnchor="middle"
         dominantBaseline="middle"
-        className={`fill-slate-900 font-semibold ${animate ? 'pie-center-fade' : ''}`}
+        className={`fill-slate-900 dark:fill-slate-50 font-semibold ${animate ? 'pie-center-fade' : ''}`}
         style={{ fontSize: 16, animationDelay: animate ? '520ms' : undefined }}
       >
         {centerText}
@@ -280,7 +295,7 @@ function PieSvg({
         y={cy + 16}
         textAnchor="middle"
         dominantBaseline="middle"
-        className={`fill-slate-500 ${animate ? 'pie-center-fade' : ''}`}
+        className={`fill-slate-500 dark:fill-slate-300 ${animate ? 'pie-center-fade' : ''}`}
         style={{ fontSize: 12, animationDelay: animate ? '610ms' : undefined }}
       >
         by category
@@ -389,13 +404,13 @@ export function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
                               style={{ backgroundColor: s.color }}
                               aria-hidden
                             />
-                            <span className="text-base text-slate-700 truncate">{s.label}</span>
+                            <span className="text-base text-slate-700 dark:text-slate-100 truncate">{s.label}</span>
                           </div>
                           <div className="text-right">
-                            <div className="text-base font-semibold text-slate-800">
+                            <div className="text-base font-semibold text-slate-800 dark:text-slate-50">
                               {formatCurrency(s.value)}
                             </div>
-                            <div className="text-sm text-slate-500">{pct.toFixed(1)}%</div>
+                            <div className="text-sm text-slate-500 dark:text-slate-300">{pct.toFixed(1)}%</div>
                           </div>
                         </div>
                       );
@@ -503,13 +518,13 @@ export function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
                                 style={{ backgroundColor: s.color }}
                                 aria-hidden
                               />
-                              <span className="text-base text-slate-700 truncate">{s.label}</span>
+                              <span className="text-base text-slate-700 dark:text-slate-100 truncate">{s.label}</span>
                             </div>
                             <div className="text-right">
-                              <div className="text-base font-semibold text-slate-800">
+                              <div className="text-base font-semibold text-slate-800 dark:text-slate-50">
                                 {formatCurrency(s.value)}
                               </div>
-                              <div className="text-sm text-slate-500">{pct.toFixed(1)}%</div>
+                              <div className="text-sm text-slate-500 dark:text-slate-300">{pct.toFixed(1)}%</div>
                             </div>
                           </div>
                         );

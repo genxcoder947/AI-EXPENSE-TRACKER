@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ExpenseAI Project Summary</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: #162131;
+      background: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.42;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    .cover {
+      min-height: 210mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      page-break-after: always;
+    }
+
+    .kicker {
+      color: #2e74b5;
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .title {
+      color: #0b2545;
+      font-size: 38pt;
+      line-height: 1.02;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      max-width: 650px;
+      color: #536478;
+      font-size: 13.5pt;
+      line-height: 1.45;
+      margin-bottom: 28px;
+    }
+
+    .meta-grid {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 18px;
+    }
+
+    .meta-grid th,
+    .meta-grid td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+
+    .meta-grid th {
+      width: 30%;
+      color: #0b2545;
+      background: #f4f6f9;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    .callout {
+      border: 1px solid #cbd5e1;
+      background: #ecfdf5;
+      padding: 12px 14px;
+      margin: 14px 0;
+      border-radius: 6px;
+    }
+
+    .callout.warning {
+      background: #fff7ed;
+    }
+
+    .callout.gray {
+      background: #f4f6f9;
+    }
+
+    .callout strong {
+      color: #0b2545;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    section {
+      break-inside: avoid-page;
+      margin-bottom: 18px;
+    }
+
+    h2 {
+      color: #2e74b5;
+      font-size: 16pt;
+      line-height: 1.2;
+      margin: 18px 0 7px;
+      padding-top: 2px;
+    }
+
+    h3 {
+      color: #1f4d78;
+      font-size: 12pt;
+      margin: 12px 0 5px;
+    }
+
+    ul, ol {
+      margin: 6px 0 0 18px;
+      padding: 0;
+    }
+
+    li {
+      margin: 3px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 12px;
+      break-inside: avoid;
+    }
+
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 8px;
+      vertical-align: top;
+    }
+
+    th {
+      color: #0b2545;
+      background: #e8eef5;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    code {
+      color: #0f172a;
+      background: #f1f5f9;
+      border: 1px solid #dbe3ef;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 9pt;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .small {
+      color: #536478;
+      font-size: 9pt;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="cover">
+      <p class="kicker">Technical Project Summary</p>
+      <h1 class="title">ExpenseAI</h1>
+      <p class="subtitle">Complete summary of what the project uses: frontend, backend status, storage/database approach, AI features, login flow, receipt scanning, analytics, and how the app is packaged and run.</p>
+      <table class="meta-grid">
+        <tr><th>Project type</th><td>Local-first React expense tracking app</td></tr>
+        <tr><th>Prepared on</th><td>May 18, 2026</td></tr>
+        <tr><th>Project folder</th><td><code>/Users/aswinsanthosh/Downloads/src 3</code></td></tr>
+        <tr><th>Main build command</th><td><code>npm run build</code></td></tr>
+        <tr><th>Desktop app bundle</th><td><code>ExpenseAI.app</code> in the project workspace</td></tr>
+      </table>
+      <div class="callout">
+        <strong>One-line summary</strong>
+        ExpenseAI is a frontend-heavy, local-first app. React runs the UI, browser storage supports the demo login/theme flow, Tesseract.js reads receipt images, local rule-based AI suggests categories and insights, and a custom macOS app bundle launches the built site through a localhost server.
+      </div>
+    </div>
+
+    <section>
+      <h2>1. Executive Summary</h2>
+      <ul>
+        <li>ExpenseAI is a smart expense tracker built as a React single-page application.</li>
+        <li>The app supports login/sign-up, manual expense entry, optional notes, receipt scanning, AI category suggestions, analytics cards, spending charts, edit/delete controls, and dark/light theme.</li>
+        <li>There is no separate cloud backend or production database in the current project. The app uses browser-side React state and localStorage helpers for the local demo experience.</li>
+        <li>Receipt scanning uses Tesseract.js OCR in the browser and a custom parser that detects totals, merchants, and item-level bill details.</li>
+        <li>The macOS desktop app is a custom <code>.app</code> bundle that starts a localhost server and opens the built site at <code>http://127.0.0.1:8000/index.html</code>.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>2. Technology Stack</h2>
+      <table>
+        <tr><th>Area</th><th>What is used</th><th>Where</th><th>Purpose</th></tr>
+        <tr><td>Frontend framework</td><td>React 18.3.1 with TypeScript</td><td><code>src/App.tsx</code>, <code>src/main.tsx</code>, <code>src/components/*</code></td><td>Builds the interactive dashboard and expense workflow.</td></tr>
+        <tr><td>Build tool</td><td>Vite 6 with <code>@vitejs/plugin-react</code></td><td><code>vite.config.ts</code>, <code>package.json</code></td><td>Runs the dev server and creates static production assets.</td></tr>
+        <tr><td>Styling</td><td>Tailwind CSS 3, PostCSS, custom CSS</td><td><code>tailwind.config.js</code>, <code>postcss.config.js</code>, <code>src/index.css</code></td><td>Responsive UI, theme switching, chart animations, and dark-mode polish.</td></tr>
+        <tr><td>Icons</td><td><code>lucide-react</code></td><td>Buttons, cards, scan panel, chart controls</td><td>Adds consistent interface icons such as Sparkles, Camera, Trash, Pencil, Calendar, and Moon/Sun.</td></tr>
+        <tr><td>AI logic</td><td>Local rule-based categorization and insight engine</td><td><code>src/utils/aiEngine.ts</code></td><td>Suggests categories, confidence, reasons, practical actions, and spending insights.</td></tr>
+        <tr><td>OCR</td><td>Tesseract.js 6</td><td><code>src/components/ReceiptScanPanel.tsx</code></td><td>Reads text from receipt photos/screenshots or live camera captures.</td></tr>
+        <tr><td>Storage/database</td><td>Browser localStorage plus React state</td><td><code>src/App.tsx</code>, <code>src/lib/auth.ts</code></td><td>Local demo storage for users and theme; expenses are initialized from localStorage and currently managed in React state.</td></tr>
+        <tr><td>Desktop app</td><td>macOS <code>.app</code> bundle + LaunchAgent + Python/Node HTTP server</td><td><code>ExpenseAI.app/Contents/*</code></td><td>Lets the project open like a normal Mac app without manually running terminal commands.</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>3. Backend, Database, and Runtime Architecture</h2>
+      <div class="callout warning">
+        <strong>Backend and database status</strong>
+        Current project backend: no traditional backend API. Current database: no external database such as MySQL, MongoDB, Firebase, or Supabase. The app is a static React build; Vite serves it during development, and the desktop app serves built files through a local HTTP server.
+      </div>
+      <ol>
+        <li>User opens the Vite dev URL or launches <code>ExpenseAI.app</code>.</li>
+        <li>The browser loads <code>index.html</code> and bundled React assets.</li>
+        <li>React mounts <code>App.tsx</code>, checks localStorage for theme and any existing expense data, and calls <code>getCurrentUser()</code> to decide whether to show login.</li>
+        <li>If no user is active, <code>Login.tsx</code> shows the login/sign-up form.</li>
+        <li>After login/sign-up succeeds in memory, the dashboard renders stats, the expense form, expense list, insights, and charts.</li>
+        <li>Receipt images are processed in the browser by Tesseract.js; parsed results are copied into the expense form.</li>
+        <li>The app computes AI suggestions, insights, category totals, and chart slices locally from the expense array.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>4. Frontend and UI Features</h2>
+      <table>
+        <tr><th>Feature</th><th>File</th><th>What it does</th></tr>
+        <tr><td>Main dashboard</td><td><code>src/App.tsx</code></td><td>Controls app state, login gate, theme toggle, header, layout grid, stats, form, list, insights, and charts.</td></tr>
+        <tr><td>Manual add expense</td><td><code>src/components/ExpenseForm.tsx</code></td><td>Inputs for description, amount, date, category, and optional notes. Creates an <code>Expense</code> object with generated id.</td></tr>
+        <tr><td>Optional notes</td><td><code>ExpenseForm.tsx</code>, <code>ExpenseList.tsx</code></td><td>Notes are optional and capped at 700 characters. Receipt scans can auto-fill notes with item details.</td></tr>
+        <tr><td>Edit/delete expense</td><td><code>src/components/ExpenseList.tsx</code></td><td>Each row supports inline edit for description, amount, date, category, notes, plus delete.</td></tr>
+        <tr><td>Stats details</td><td><code>src/components/StatsOverview.tsx</code></td><td>Clickable stat cards open detail modals for total spent, this month, and AI categorized expenses.</td></tr>
+        <tr><td>Charts</td><td><code>SpendingChart.tsx</code>, <code>CategoryPieChart.tsx</code></td><td>Shows category totals, pie chart, time ranges, search filters, and animated full chart modal.</td></tr>
+        <tr><td>Themes</td><td><code>src/App.tsx</code>, <code>src/index.css</code></td><td>Class-based light/dark theme with card, input, hover, and modal styling.</td></tr>
+        <tr><td>Reusable UI</td><td><code>src/components/ui/*</code></td><td>Small Button, Card, Input, and Label primitives shared across screens.</td></tr>
+      </table>
+    </section>
+
+    <section class="page-break">
+      <h2>5. Login Page, Storage, and Data Model</h2>
+      <h3>Login Page</h3>
+      <ul>
+        <li><code>Login.tsx</code> handles both sign-in and account creation from the same card UI.</li>
+        <li>It validates that the email contains <code>@</code> and the password has at least 6 characters.</li>
+        <li>The screen uses shared UI components: <code>Input</code>, <code>Button</code>, <code>Label</code>, and <code>Card</code>.</li>
+        <li>The login page switches between "Sign In" and "Sign Up" states using local component state.</li>
+      </ul>
+
+      <h3>Local Demo Auth and Storage</h3>
+      <table>
+        <tr><th>Data</th><th>Storage</th><th>Purpose</th></tr>
+        <tr><td><code>users</code></td><td>localStorage key</td><td>Stores demo user records by email/username.</td></tr>
+        <tr><td><code>currentUser</code></td><td>localStorage helper exists</td><td><code>auth.ts</code> includes helpers for the active user, but the current <code>App.tsx</code> login/sign-up flow does not call <code>setCurrentUser()</code>.</td></tr>
+        <tr><td><code>theme</code></td><td>localStorage key</td><td>Stores light/dark theme preference.</td></tr>
+        <tr><td><code>expenses</code></td><td>localStorage key read in <code>App.tsx</code></td><td>The app initializes expenses from this key. Current add/edit/delete updates are handled through React state and are not written back in the active <code>App.tsx</code>.</td></tr>
+      </table>
+
+      <div class="callout warning">
+        <strong>Important security note</strong>
+        This login system is for a local/demo project. Passwords are stored directly in localStorage, so it is not safe for real users. A production version should use a backend auth service, hashed passwords, secure sessions, per-user expense records, and a real database.
+      </div>
+
+      <h3>Expense Data Shape</h3>
+      <ul>
+        <li><code>Expense</code> fields: <code>id</code>, <code>description</code>, <code>amount</code>, <code>category</code>, <code>date</code>, optional <code>notes</code>, and <code>aiSuggested</code>.</li>
+        <li>Dates are stored as <code>YYYY-MM-DD</code> strings.</li>
+        <li>Currency formatting uses <code>Intl.NumberFormat</code> with <code>en-IN</code> and <code>INR</code>.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>6. AI and Receipt Scanning Features</h2>
+      <h3>AI Category Suggestions</h3>
+      <ul>
+        <li><code>suggestCategory(description)</code> tokenizes the description and compares it with category keyword lists.</li>
+        <li>Supported categories include Food &amp; Dining, Transportation, Shopping, Entertainment, Bills &amp; Utilities, Healthcare, Education, Travel, and Other.</li>
+        <li>The suggestion includes a category, confidence score, reason, matched signals, and a practical action tip.</li>
+        <li>Examples: Zomato, Swiggy, Blinkit, Starbucks, and Domino's map toward Food &amp; Dining; Uber, Ola, fuel, metro, and toll map toward Transportation.</li>
+      </ul>
+
+      <h3>AI Insights</h3>
+      <ul>
+        <li><code>generateInsights()</code> calculates category concentration, weekly daily average, projected monthly spend, and practical spending tips.</li>
+        <li><code>calculateCategoryTotals()</code> computes totals and percentages used by the category charts.</li>
+        <li>Insights currently run locally and deterministically; there is no cloud LLM call.</li>
+      </ul>
+
+      <h3>Receipt OCR and Item Details</h3>
+      <table>
+        <tr><th>Part</th><th>How it works</th></tr>
+        <tr><td>Image input</td><td>Choose photo, device camera/gallery, or live webcam capture.</td></tr>
+        <tr><td>OCR engine</td><td>Tesseract.js creates an English OCR worker and reads text from the selected image.</td></tr>
+        <tr><td>Parser</td><td><code>receiptParser.ts</code> detects merchant names, total/payment lines, rupee/dollar amounts, and line items.</td></tr>
+        <tr><td>Auto-filled fields</td><td>Description, total amount, optional notes, item count, confidence, and warnings.</td></tr>
+        <tr><td>Notes output</td><td>Scanned item names, quantities when detected, individual item amounts, and receipt total.</td></tr>
+        <tr><td>Verification</td><td>The UI warns the user to verify OCR results before saving because receipts can be noisy.</td></tr>
+      </table>
+
+      <div class="callout">
+        <strong>AI type used</strong>
+        The current project does not call a cloud AI model. The "AI" behavior is local deterministic logic: keyword scoring, confidence calculation, practical advice rules, and OCR-assisted receipt parsing.
+      </div>
+    </section>
+
+    <section>
+      <h2>7. Analytics, Charts, and Animations</h2>
+      <ul>
+        <li><code>StatsOverview</code> shows Total Spent, This Month, and AI Categorized. Each card opens a modal with matching expense details.</li>
+        <li><code>SpendingChart</code> shows top category totals as progress bars.</li>
+        <li><code>CategoryPieChart</code> renders a custom SVG pie/donut chart with stable category colors.</li>
+        <li>The full chart modal supports Day, Last 24h, Month, and Year filters plus category/description search.</li>
+        <li><code>src/index.css</code> includes modal fade-in, panel scale-in, pie pop-in, slice drawing, and center-text fade animations.</li>
+        <li>Reduced-motion support disables chart animations for users who prefer less motion.</li>
+      </ul>
+    </section>
+
+    <section class="page-break">
+      <h2>8. macOS Desktop App Packaging</h2>
+      <div class="callout">
+        <strong>How the app was made into a Mac app</strong>
+        The project was not converted into Electron. Instead, the Vite build was copied into a normal macOS <code>.app</code> bundle. The bundle starts a tiny local server and opens the app URL in the browser, so the user can launch ExpenseAI by double-clicking the app.
+      </div>
+      <table>
+        <tr><th>Piece</th><th>Purpose</th></tr>
+        <tr><td><code>ExpenseAI.app/Contents/Info.plist</code></td><td>Defines bundle name, executable, identifier, version, package type, and <code>LSUIElement</code>.</td></tr>
+        <tr><td><code>ExpenseAI.app/Contents/MacOS/ExpenseAI</code></td><td>zsh launcher that checks localhost, writes/starts a LaunchAgent, waits for the server, and opens the app URL.</td></tr>
+        <tr><td><code>ExpenseAI.app/Contents/Resources/site</code></td><td>Contains the built Vite site: <code>index.html</code> plus hashed JS/CSS assets.</td></tr>
+        <tr><td><code>ExpenseAI.app/Contents/Resources/server.mjs</code></td><td>Node fallback static server if Python 3 is unavailable.</td></tr>
+        <tr><td><code>~/Library/LaunchAgents/com.local.expenseai.server.plist</code></td><td>Generated by the launcher to run Python <code>http.server</code> or the Node fallback.</td></tr>
+        <tr><td><code>http://127.0.0.1:8000/index.html</code></td><td>Stable local URL used by the desktop app. Keeping the same origin helps preserve browser localStorage data.</td></tr>
+      </table>
+      <h3>Desktop Launch Flow</h3>
+      <ol>
+        <li>User double-clicks <code>ExpenseAI.app</code>.</li>
+        <li>The shell launcher checks whether <code>http://127.0.0.1:8000/index.html</code> is reachable.</li>
+        <li>If the server is not running, the launcher writes a LaunchAgent plist and starts it.</li>
+        <li>The LaunchAgent serves the built site from <code>Contents/Resources/site</code>.</li>
+        <li>The launcher opens the local URL in the default browser.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>9. Build, Run, and Important Files</h2>
+      <table>
+        <tr><th>Command</th><th>Meaning</th></tr>
+        <tr><td><code>npm run dev</code></td><td>Starts the Vite development server for local development.</td></tr>
+        <tr><td><code>npm run build</code></td><td>Runs TypeScript checks and creates the production build.</td></tr>
+        <tr><td><code>npm run preview</code></td><td>Serves the built Vite output for preview.</td></tr>
+        <tr><td><code>cp -R dist/. ExpenseAI.app/Contents/Resources/site/</code></td><td>Syncs the production build into the local app bundle.</td></tr>
+      </table>
+
+      <h3>Key Source Files</h3>
+      <table>
+        <tr><th>File</th><th>Role</th></tr>
+        <tr><td><code>src/App.tsx</code></td><td>Application shell, state, login gate, theme toggle, and dashboard layout.</td></tr>
+        <tr><td><code>src/components/auth/Login.tsx</code></td><td>Login/sign-up UI and basic validation.</td></tr>
+        <tr><td><code>src/components/ExpenseForm.tsx</code></td><td>Manual expense entry, optional notes, AI suggestion UI, and receipt scan handoff.</td></tr>
+        <tr><td><code>src/components/ReceiptScanPanel.tsx</code></td><td>Photo upload, live camera, webcam capture, and Tesseract.js OCR.</td></tr>
+        <tr><td><code>src/utils/receiptParser.ts</code></td><td>Receipt amount, merchant, item, confidence, and warning extraction.</td></tr>
+        <tr><td><code>src/utils/aiEngine.ts</code></td><td>Category suggestions, actionable tips, insights, and category totals.</td></tr>
+        <tr><td><code>src/components/ExpenseList.tsx</code></td><td>Expense display, optional notes display, edit, and delete controls.</td></tr>
+        <tr><td><code>src/components/CategoryPieChart.tsx</code></td><td>Time-filtered category pie chart, modal, search, and SVG rendering.</td></tr>
+        <tr><td><code>src/lib/auth.ts</code></td><td>Local demo sign-up/login/current-user helper functions.</td></tr>
+        <tr><td><code>src/index.css</code></td><td>Tailwind entry, chart animations, and dark-theme overrides.</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>10. Current Limitations and Production Improvements</h2>
+      <ul>
+        <li>Use a real backend and database for production, such as Node/Express or serverless APIs plus Postgres, Firebase, or Supabase.</li>
+        <li>Replace localStorage demo auth with secure authentication, hashed passwords, sessions/tokens, and protected user-specific data.</li>
+        <li>Persist expense updates reliably per user. Current source initializes expenses from localStorage but does not write add/edit/delete changes back to localStorage in the active <code>App.tsx</code>.</li>
+        <li>Call <code>setCurrentUser()</code> during login/sign-up if the app should remember the signed-in user after refresh.</li>
+        <li>Improve OCR with stronger image preprocessing, confidence scoring per field, and manual correction history.</li>
+        <li>If true generative AI is needed, add an API-backed assistant for richer natural-language suggestions, budget plans, and anomaly detection.</li>
+        <li>Consider Electron or Tauri later if a fully native app window, menu bar, offline asset control, and stronger desktop integration are required.</li>
+      </ul>
+      <p class="small">Generated from the current project files in <code>/Users/aswinsanthosh/Downloads/src 3</code>.</p>
+    </section>
+  </main>
+</body>
+</html>

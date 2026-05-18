@@ -7,8 +7,8 @@ import { Check, NotebookText, Pencil, Sparkles, Trash2, X } from 'lucide-react';
 
 interface ExpenseListProps {
   expenses: Expense[];
-  onDeleteExpense: (id: string) => void;
-  onUpdateExpense: (expense: Expense) => void;
+  onDeleteExpense: (id: string) => Promise<void>;
+  onUpdateExpense: (expense: Expense) => Promise<void>;
 }
 
 type ExpenseDraft = {
@@ -46,6 +46,8 @@ const categories = [
 export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: ExpenseListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ExpenseDraft | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const startEditing = (expense: Expense) => {
     setEditingId(expense.id);
@@ -63,23 +65,43 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
     setDraft(null);
   };
 
-  const saveEditing = (expense: Expense) => {
+  const saveEditing = async (expense: Expense) => {
     if (!draft || !draft.description.trim() || !draft.amount) return;
 
     const parsedAmount = Number(draft.amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return;
 
     const trimmedNotes = draft.notes.trim();
-    onUpdateExpense({
-      ...expense,
-      description: draft.description.trim(),
-      amount: parsedAmount,
-      category: draft.category,
-      date: draft.date,
-      notes: trimmedNotes || undefined,
-      aiSuggested: false,
-    });
-    cancelEditing();
+    setActionError(null);
+    setPendingId(expense.id);
+    try {
+      await onUpdateExpense({
+        ...expense,
+        description: draft.description.trim(),
+        amount: parsedAmount,
+        category: draft.category,
+        date: draft.date,
+        notes: trimmedNotes || undefined,
+        aiSuggested: false,
+      });
+      cancelEditing();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not update the expense.');
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  const deleteExpense = async (expense: Expense) => {
+    setActionError(null);
+    setPendingId(expense.id);
+    try {
+      await onDeleteExpense(expense.id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not delete the expense.');
+    } finally {
+      setPendingId(null);
+    }
   };
 
   if (expenses.length === 0) {
@@ -100,6 +122,11 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
         <CardTitle className="text-lg font-semibold text-slate-800">Recent Expenses</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
+        {actionError && (
+          <div className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+            {actionError}
+          </div>
+        )}
         <div className="divide-y divide-slate-100">
           {expenses.map((expense) => {
             const isEditing = editingId === expense.id && draft;
@@ -137,12 +164,13 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
                         </option>
                       ))}
                     </select>
-                    <Input
+                    <textarea
                       value={draft.notes}
                       onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
                       placeholder="Optional notes"
-                      maxLength={120}
-                      className="md:col-span-2"
+                      maxLength={700}
+                      rows={4}
+                      className="min-h-24 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 caret-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 md:col-span-2"
                     />
                   </div>
                   <div className="mt-3 flex items-center justify-end gap-2">
@@ -157,10 +185,11 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
                     <button
                       type="button"
                       onClick={() => saveEditing(expense)}
+                      disabled={pendingId === expense.id}
                       className="flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700"
                     >
                       <Check className="h-3.5 w-3.5" />
-                      Save changes
+                      {pendingId === expense.id ? 'Saving...' : 'Save changes'}
                     </button>
                   </div>
                 </div>
@@ -204,6 +233,7 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
                   <button
                     type="button"
                     onClick={() => startEditing(expense)}
+                    disabled={pendingId === expense.id}
                     className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-all focus:opacity-100"
                     aria-label={`Edit ${expense.description}`}
                   >
@@ -211,7 +241,8 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
                   </button>
                   <button
                     type="button"
-                    onClick={() => onDeleteExpense(expense.id)}
+                    onClick={() => deleteExpense(expense)}
+                    disabled={pendingId === expense.id}
                     className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all focus:opacity-100"
                     aria-label={`Delete ${expense.description}`}
                   >

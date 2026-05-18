@@ -10,20 +10,31 @@ import { sortExpensesByDate } from './utils/helpers';
 import { CategoryPieChart } from './components/CategoryPieChart';
 import { Sparkles, Moon, Sun } from 'lucide-react';
 import Login from './components/auth/Login';
-import { getCurrentUser, loginUser, logout, registerUser } from './lib/auth';
+import {
+  type ApiUser,
+  clearStoredSession,
+  createExpense,
+  deleteExpense,
+  fetchCurrentUser,
+  fetchExpenses,
+  getErrorMessage,
+  hasStoredSession,
+  login,
+  logout,
+  register,
+  updateExpense,
+} from './lib/api';
 
 export default function App() {
-  const [expenses, setExpenses] = useState<Expense[]>(() => {
-    const saved = localStorage.getItem('expenses');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [user, setUser] = useState<ApiUser | null>(null);
+  const [initializing, setInitializing] = useState(true);
+  const [appError, setAppError] = useState<string | null>(null);
 
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
     return saved === 'dark';
   });
-
-  const [user, setUser] = useState(() => getCurrentUser());
 
   useEffect(() => {
     if (darkMode) {
@@ -34,52 +45,93 @@ export default function App() {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const boot = async () => {
+      if (!hasStoredSession()) {
+        setInitializing(false);
+        return;
+      }
+
+      try {
+        const currentUser = await fetchCurrentUser();
+        const savedExpenses = await fetchExpenses();
+        if (!cancelled) {
+          setUser(currentUser);
+          setExpenses(sortExpensesByDate(savedExpenses));
+        }
+      } catch (err) {
+        clearStoredSession();
+        if (!cancelled) {
+          setUser(null);
+          setExpenses([]);
+          setAppError(getErrorMessage(err));
+        }
+      } finally {
+        if (!cancelled) {
+          setInitializing(false);
+        }
+      }
+    };
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const toggleTheme = () => {
     setDarkMode(prev => !prev);
   };
 
-  const handleLogin = (email: string, password: string) => {
-    const user = loginUser(email, password);
-    if (user) {
-      setUser(user);
-      // Clear expenses for new user
-      setExpenses([]);
-    } else {
-      // In a real app, we would show an error
-      alert('Invalid credentials');
-    }
+  const loadUserExpenses = async () => {
+    const savedExpenses = await fetchExpenses();
+    setExpenses(sortExpensesByDate(savedExpenses));
   };
 
-  const handleSignUp = (email: string, password: string) => {
-    const newUser = registerUser(email, password);
-    if (newUser) {
-      setUser(newUser);
-      // Clear expenses for new user
-      setExpenses([]);
-    } else {
-      alert('User already exists with this email');
-    }
+  const handleLogin = async (email: string, password: string) => {
+    const session = await login(email, password);
+    setUser(session.user);
+    await loadUserExpenses();
+    setAppError(null);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleSignUp = async (email: string, password: string) => {
+    const session = await register(email, password);
+    setUser(session.user);
+    await loadUserExpenses();
+    setAppError(null);
+  };
+
+  const handleLogout = async () => {
+    await logout();
     setUser(null);
-    // Clear expenses on logout
     setExpenses([]);
   };
 
-  const handleAddExpense = (expense: Expense) => {
-    setExpenses(prev => sortExpensesByDate([expense, ...prev]));
+  const handleAddExpense = async (expense: Expense) => {
+    const savedExpense = await createExpense({
+      description: expense.description,
+      amount: expense.amount,
+      category: expense.category,
+      date: expense.date,
+      notes: expense.notes,
+      aiSuggested: expense.aiSuggested,
+    });
+    setExpenses(prev => sortExpensesByDate([savedExpense, ...prev]));
   };
 
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = async (id: string) => {
+    await deleteExpense(id);
     setExpenses(prev => prev.filter(e => e.id !== id));
   };
 
-  const handleUpdateExpense = (updatedExpense: Expense) => {
+  const handleUpdateExpense = async (updatedExpense: Expense) => {
+    const savedExpense = await updateExpense(updatedExpense);
     setExpenses(prev =>
       sortExpensesByDate(prev.map(expense => (
-        expense.id === updatedExpense.id ? updatedExpense : expense
+        expense.id === savedExpense.id ? savedExpense : expense
       )))
     );
   };
@@ -87,9 +139,31 @@ export default function App() {
   const insights = generateInsights(expenses);
   const categoryTotals = calculateCategoryTotals(expenses);
 
-  // If no user, show login page
+  if (initializing) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+            <Sparkles className="h-6 w-6 animate-pulse" />
+          </div>
+          <p className="font-semibold text-slate-800 dark:text-slate-100">Opening ExpenseAI...</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Checking your backend session</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
-    return <Login onLogin={handleLogin} onSignUp={handleSignUp} />;
+    return (
+      <>
+        {appError && (
+          <div className="fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 shadow-sm">
+            {appError}
+          </div>
+        )}
+        <Login onLogin={handleLogin} onSignUp={handleSignUp} />
+      </>
+    );
   }
 
   return (
@@ -111,10 +185,10 @@ export default function App() {
               <span className="px-3 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-200 dark:text-emerald-800 text-xs font-medium rounded-full">
                 {expenses.length} expenses
               </span>
-              <button onClick={toggleTheme} className="p-2 rounded bg-slate-100 dark:bg-slate-600 hover:bg-slate-200 dark:hover:bg-slate-50">
+              <button onClick={toggleTheme} className="p-2 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600">
                 {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-yellow-400" />}
               </button>
-              <button onClick={handleLogout} className="p-2 rounded bg-red-100 text-red-700 dark:bg-red-200 dark:text-red-800 hover:bg-red-200 dark:hover:bg-red-300">
+              <button onClick={() => void handleLogout()} className="p-2 rounded bg-red-100 text-red-700 dark:bg-rose-900/40 dark:text-rose-200 hover:bg-red-200 dark:hover:bg-rose-900/60">
                 Logout
               </button>
             </div>

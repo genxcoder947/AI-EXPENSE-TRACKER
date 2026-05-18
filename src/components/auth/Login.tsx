@@ -5,8 +5,8 @@ import { Label } from '../ui/label';
 import { Card } from '../ui/card';
 
 type LoginProps = {
-  onLogin: (email: string, password: string) => void;
-  onSignUp: (email: string, password: string) => void;
+  onLogin: (email: string, password: string) => Promise<void>;
+  onSignUp: (email: string, password: string) => Promise<void>;
 };
 
 export default function Login({ onLogin, onSignUp }: LoginProps) {
@@ -16,7 +16,7 @@ export default function Login({ onLogin, onSignUp }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true); // true for login, false for sign up
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -34,18 +34,17 @@ export default function Login({ onLogin, onSignUp }: LoginProps) {
       return;
     }
 
-    if (isLogin) {
-      onLogin(email, password);
-    } else {
-      onSignUp(email, password);
-    }
-    // Note: The callback functions will handle setting user state etc.
-    // We'll reset loading after a short delay to allow UI feedback; in a real app,
-    // we would rely on the callbacks to manage state and then stop loading via props or context.
-    // For simplicity, we'll reset loading after 1 second if still loading.
-    setTimeout(() => {
+    try {
+      if (isLogin) {
+        await onLogin(email, password);
+      } else {
+        await onSignUp(email, password);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

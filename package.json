@@ -4,9 +4,12 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "backend": "python3 backend/server.py",
     "dev": "vite",
+    "dev:full": "python3 backend/dev.py",
     "build": "tsc -p tsconfig.app.json && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve:full": "python3 backend/server.py --static-dir dist"
   },
   "dependencies": {
     "clsx": "^2.1.1",

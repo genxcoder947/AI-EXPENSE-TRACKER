@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -10,7 +10,7 @@ import { AiSuggestion, Expense } from '../types';
 import { Check, Info, Lightbulb, Sparkles } from 'lucide-react';
 
 interface ExpenseFormProps {
-  onAddExpense: (expense: Expense) => void;
+  onAddExpense: (expense: Expense) => Promise<void>;
 }
 
 const categories = [
@@ -33,10 +33,13 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
   const [notes, setNotes] = useState('');
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [filledFromScan, setFilledFromScan] = useState(false);
   const [scanHints, setScanHints] = useState<{
     confidence: 'high' | 'medium' | 'low';
     warnings: string[];
+    itemCount: number;
   } | null>(null);
 
   const clearScanContext = () => {
@@ -47,7 +50,8 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
   const applyScanResult = (result: ReceiptScanResult) => {
     setDescription(result.description);
     setAmount(result.amount || '');
-    setScanHints({ confidence: result.confidence, warnings: result.warnings });
+    setNotes(result.notes || '');
+    setScanHints({ confidence: result.confidence, warnings: result.warnings, itemCount: result.itemCount });
     setFilledFromScan(true);
     if (result.description.length > 2) {
       setIsAnalyzing(true);
@@ -83,9 +87,9 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!description || !amount) return;
+    if (!description || !amount || isSaving) return;
 
     const autoCat = suggestCategory(description);
     const trimmedNotes = notes.trim();
@@ -99,13 +103,21 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
       aiSuggested: filledFromScan || autoCat.category === category,
     };
 
-    onAddExpense(expense);
-    setDescription('');
-    setAmount('');
-    setCategory('Other');
-    setNotes('');
-    setAiSuggestion(null);
-    clearScanContext();
+    setSubmitError(null);
+    setIsSaving(true);
+    try {
+      await onAddExpense(expense);
+      setDescription('');
+      setAmount('');
+      setCategory('Other');
+      setNotes('');
+      setAiSuggestion(null);
+      clearScanContext();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Could not save the expense.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -136,8 +148,13 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
                 <p className="text-slate-700 leading-relaxed">
                   On-device OCR can misread glare, fonts, or small text. Check the{' '}
                   <strong>amount</strong> and <strong>description</strong> match your receipt
-                  before you save.
+                  and <strong>scanned item notes</strong> match your receipt before you save.
                 </p>
+                {scanHints.itemCount > 0 && (
+                  <p className="text-slate-700 leading-relaxed">
+                    Added {scanHints.itemCount} scanned item{scanHints.itemCount === 1 ? '' : 's'} to the optional notes field.
+                  </p>
+                )}
                 {scanHints.warnings.length > 0 && (
                   <ul className="list-disc space-y-1 pl-4 text-slate-700">
                     {scanHints.warnings.map((w) => (
@@ -248,23 +265,28 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
             <Label htmlFor="notes" className="text-sm font-medium text-slate-700">
               Notes <span className="font-normal text-slate-400">(optional)</span>
             </Label>
-            <Input
+            <textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g., Team lunch, reimbursable, paid by card"
-              className="bg-white border-slate-300 focus:border-emerald-500 focus:ring-emerald-500"
-              maxLength={120}
+              placeholder="e.g., Team lunch, reimbursable, paid by card. Scanned receipts can add item names and prices here."
+              className="min-h-24 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 caret-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              maxLength={700}
+              rows={4}
             />
-            <div className="text-right text-[11px] text-slate-400">{notes.length}/120</div>
+            <div className="text-right text-[11px] text-slate-400">{notes.length}/700</div>
           </div>
 
           <Button
             type="submit"
+            disabled={isSaving}
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 transition-colors"
           >
-            Add Expense
+            {isSaving ? 'Saving...' : 'Add Expense'}
           </Button>
+          {submitError && (
+            <p className="text-sm text-rose-600" role="alert">{submitError}</p>
+          )}
         </form>
       </CardContent>
     </Card>

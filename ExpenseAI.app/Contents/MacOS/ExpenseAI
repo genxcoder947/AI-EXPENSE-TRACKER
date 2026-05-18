@@ -1,0 +1,153 @@
+#!/bin/zsh
+
+APP_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SITE_DIR="$APP_ROOT/Resources/site"
+BACKEND_SERVER="$APP_ROOT/Resources/backend/server.py"
+SUPPORT_DIR="$HOME/Library/Application Support/ExpenseAI"
+AGENT_DIR="$HOME/Library/LaunchAgents"
+LABEL="com.local.expenseai.server"
+PLIST="$AGENT_DIR/$LABEL.plist"
+LOG_FILE="$SUPPORT_DIR/server.log"
+ERROR_LOG_FILE="$SUPPORT_DIR/server-error.log"
+DB_FILE="$SUPPORT_DIR/expenseai.sqlite3"
+PORT=8000
+URL="http://127.0.0.1:$PORT/index.html"
+HEALTH_URL="http://127.0.0.1:$PORT/api/health"
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+mkdir -p "$SUPPORT_DIR" "$AGENT_DIR"
+
+is_expenseai_ready() {
+  /usr/bin/curl -fsS "$HEALTH_URL" >/dev/null 2>&1
+}
+
+write_python_agent() {
+  local python_bin="$1"
+  cat > "$PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$python_bin</string>
+    <string>$BACKEND_SERVER</string>
+    <string>--port</string>
+    <string>$PORT</string>
+    <string>--host</string>
+    <string>127.0.0.1</string>
+    <string>--static-dir</string>
+    <string>$SITE_DIR</string>
+    <string>--db</string>
+    <string>$DB_FILE</string>
+  </array>
+  <key>StandardOutPath</key>
+  <string>$LOG_FILE</string>
+  <key>StandardErrorPath</key>
+  <string>$ERROR_LOG_FILE</string>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+}
+
+write_static_python_agent() {
+  local python_bin="$1"
+  cat > "$PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$python_bin</string>
+    <string>-m</string>
+    <string>http.server</string>
+    <string>$PORT</string>
+    <string>--bind</string>
+    <string>127.0.0.1</string>
+    <string>--directory</string>
+    <string>$SITE_DIR</string>
+  </array>
+  <key>StandardOutPath</key>
+  <string>$LOG_FILE</string>
+  <key>StandardErrorPath</key>
+  <string>$ERROR_LOG_FILE</string>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+}
+
+write_node_agent() {
+  local node_bin="$1"
+  cat > "$PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$node_bin</string>
+    <string>$APP_ROOT/Resources/server.mjs</string>
+    <string>$SITE_DIR</string>
+    <string>$PORT</string>
+  </array>
+  <key>StandardOutPath</key>
+  <string>$LOG_FILE</string>
+  <key>StandardErrorPath</key>
+  <string>$ERROR_LOG_FILE</string>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+}
+
+start_server_agent() {
+  /bin/launchctl bootout "gui/$(/usr/bin/id -u)" "$PLIST" >/dev/null 2>&1
+
+  if command -v python3 >/dev/null 2>&1; then
+    if [[ -f "$BACKEND_SERVER" ]]; then
+      write_python_agent "$(command -v python3)"
+    else
+      write_static_python_agent "$(command -v python3)"
+    fi
+  elif command -v node >/dev/null 2>&1; then
+    write_node_agent "$(command -v node)"
+  else
+    /usr/bin/osascript -e 'display dialog "ExpenseAI needs Python 3 or Node.js to start its local app server." buttons {"OK"} default button "OK" with icon caution'
+    exit 1
+  fi
+
+  /bin/launchctl bootstrap "gui/$(/usr/bin/id -u)" "$PLIST" >/dev/null 2>&1
+  /bin/launchctl kickstart -k "gui/$(/usr/bin/id -u)/$LABEL" >/dev/null 2>&1
+}
+
+if ! is_expenseai_ready; then
+  start_server_agent
+
+  for _ in {1..40}; do
+    if is_expenseai_ready; then
+      break
+    fi
+    sleep 0.15
+  done
+fi
+
+if is_expenseai_ready; then
+  open "$URL"
+else
+  /usr/bin/osascript -e 'display dialog "ExpenseAI could not start its local server. Try opening the app again, or check ~/Library/Application Support/ExpenseAI/server-error.log." buttons {"OK"} default button "OK" with icon caution'
+fi
+
+exit 0

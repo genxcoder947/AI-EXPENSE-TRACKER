@@ -13,6 +13,8 @@ import { parseReceiptText } from '../utils/receiptParser';
 export interface ReceiptScanResult {
   description: string;
   amount: string;
+  notes: string;
+  itemCount: number;
   confidence: 'high' | 'medium' | 'low';
   warnings: string[];
 }
@@ -25,6 +27,49 @@ type ScanPhase = 'idle' | 'loading' | 'error';
 
 function clearInput(el: HTMLInputElement | null) {
   if (el) el.value = '';
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), 'image/png');
+  });
+}
+
+async function preprocessImageForOcr(file: File): Promise<Blob | File> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const longestSide = Math.max(bitmap.width, bitmap.height);
+    const scale = longestSide < 2200 ? Math.min(3, 2200 / longestSide) : 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.filter = 'grayscale(1) contrast(1.9) brightness(1.08)';
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    ctx.filter = 'none';
+    bitmap.close();
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const value = data[i];
+      const cleaned = value < 185 ? Math.max(0, value - 25) : Math.min(255, value + 18);
+      data[i] = cleaned;
+      data[i + 1] = cleaned;
+      data[i + 2] = cleaned;
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    const blob = await canvasToBlob(canvas);
+    return blob || file;
+  } catch {
+    return file;
+  }
 }
 
 export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
@@ -73,7 +118,7 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
       setProgressLabel('Loading OCR…');
 
       try {
-        const { createWorker } = await import('tesseract.js');
+        const { createWorker, PSM } = await import('tesseract.js');
         const worker = await createWorker('eng', undefined, {
           logger: (m) => {
             if (m.status === 'recognizing text') {
@@ -88,11 +133,19 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
             }
           },
         });
+        await worker.setParameters({
+          tessedit_pageseg_mode: PSM.AUTO,
+          preserve_interword_spaces: '1',
+          user_defined_dpi: '300',
+        });
+
+        setProgressLabel('Preparing image…');
+        const ocrImage = await preprocessImageForOcr(file);
 
         setProgressLabel('Reading receipt…');
         const {
           data: { text },
-        } = await worker.recognize(file);
+        } = await worker.recognize(ocrImage);
         await worker.terminate();
 
         const parsed = parseReceiptText(text);
@@ -102,6 +155,8 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
         onScanComplete({
           description: parsed.description,
           amount: amountStr,
+          notes: parsed.notes,
+          itemCount: parsed.itemCount,
           confidence: parsed.confidence,
           warnings: parsed.warnings,
         });
@@ -257,7 +312,7 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
           <p className="text-xs text-slate-600 leading-relaxed">
             Pick a saved image, or use <strong className="text-slate-700">Live camera</strong>{' '}
             for your webcam (allow permission when asked). Everything stays on your
-            device—verify amount and description before saving.
+            device—verify amount, item details, and description before saving.
           </p>
         </div>
       </div>
