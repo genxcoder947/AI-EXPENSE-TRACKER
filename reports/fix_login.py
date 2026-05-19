@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+OUT = Path(__file__).resolve().parents[1] / "src/components/auth/Login.tsx"
+CED = "</" + "motionlessLoginShell>"  # typo placeholder - fix below
+CED = "</" + "div>"
+
+lines = [
+    "import React, { useState } from 'react';",
+    "import { Input } from '../ui/input';",
+    "import { Button } from '../ui/button';",
+    "import { Label } from '../ui/label';",
+    "import { Card } from '../ui/card';",
+    "import { requestPasswordReset, resetPassword } from '../../lib/api';",
+    "",
+    "type AuthView = 'login' | 'signup' | 'forgot' | 'reset';",
+    "",
+    "type LoginProps = {",
+    "  onLogin: (email: string, password: string) => Promise<void>;",
+    "  onSignUp: (email: string, password: string) => Promise<void>;",
+    "  onPasswordReset?: () => Promise<void>;",
+    "};",
+    "",
+    "function ResetCodeBox({ code, onCopy }: { code: string; onCopy: () => void }) {",
+    "  return (",
+    '    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/40">',
+    '      <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Your reset code</p>',
+    '      <p className="mt-1 break-all font-mono text-sm text-slate-800 dark:text-slate-100">{code}</p>',
+    "      <button",
+    '        type="button"',
+    "        onClick={onCopy}",
+    '        className="mt-2 text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"',
+    "      >",
+    "        Copy code",
+    "      </button>",
+    '      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">',
+    "        This app runs locally without email. Save this code before continuing.",
+    "      </p>",
+    "    " + CED,
+    "  );",
+    "}",
+    "",
+    "export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps) {",
+    "  const [view, setView] = useState<AuthView>('login');",
+    "  const [email, setEmail] = useState('');",
+    "  const [password, setPassword] = useState('');",
+    "  const [confirmPassword, setConfirmPassword] = useState('');",
+    "  const [resetCode, setResetCode] = useState('');",
+    "  const [issuedResetCode, setIssuedResetCode] = useState<string | null>(null);",
+    "  const [info, setInfo] = useState<string | null>(null);",
+    "  const [error, setError] = useState<string | null>(null);",
+    "  const [loading, setLoading] = useState(false);",
+    "",
+    "  const resetMessages = () => {",
+    "    setError(null);",
+    "    setInfo(null);",
+    "  };",
+    "",
+    "  const switchView = (next: AuthView) => {",
+    "    resetMessages();",
+    "    setView(next);",
+    "    if (next === 'login' || next === 'signup') {",
+    "      setPassword('');",
+    "      setConfirmPassword('');",
+    "      setResetCode('');",
+    "      setIssuedResetCode(null);",
+    "    }",
+    "  };",
+]
+
+# handlers appended in second part - use write to file from shell with heredoc for the rest
+OUT.write_text("\n".join(lines) + "\n  return null;\n}\n")
+print("partial write", OUT)

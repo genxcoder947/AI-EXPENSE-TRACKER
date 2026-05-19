@@ -3,25 +3,67 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Card } from '../ui/card';
+import { requestPasswordReset, resetPassword } from '../../lib/api';
+
+type AuthView = 'login' | 'signup' | 'forgot' | 'reset';
 
 type LoginProps = {
   onLogin: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
+  onPasswordReset?: () => Promise<void>;
 };
 
-export default function Login({ onLogin, onSignUp }: LoginProps) {
+function ResetCodeBox({ code, onCopy }: { code: string; onCopy: () => void }) {
+  return (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/40">
+      <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Your reset code</p>
+      <p className="mt-1 break-all font-mono text-sm text-slate-800 dark:text-slate-100">{code}</p>
+      <button
+        type="button"
+        onClick={onCopy}
+        className="mt-2 text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+      >
+        Copy code
+      </button>
+      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+        This app runs locally without email. Save this code before continuing.
+      </p>
+    </div>
+  );
+}
+
+export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps) {
+  const [view, setView] = useState<AuthView>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [issuedResetCode, setIssuedResetCode] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isLogin, setIsLogin] = useState(true); // true for login, false for sign up
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const resetMessages = () => {
     setError(null);
+    setInfo(null);
+  };
+
+  const switchView = (next: AuthView) => {
+    resetMessages();
+    setView(next);
+    if (next === 'login' || next === 'signup') {
+      setPassword('');
+      setConfirmPassword('');
+      setResetCode('');
+      setIssuedResetCode(null);
+    }
+  };
+
+  const handleLoginOrSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    resetMessages();
     setLoading(true);
 
-    // Simple validation
     if (!email.includes('@') || !email) {
       setError('Please enter a valid email');
       setLoading(false);
@@ -35,7 +77,7 @@ export default function Login({ onLogin, onSignUp }: LoginProps) {
     }
 
     try {
-      if (isLogin) {
+      if (view === 'login') {
         await onLogin(email, password);
       } else {
         await onSignUp(email, password);
@@ -47,60 +89,298 @@ export default function Login({ onLogin, onSignUp }: LoginProps) {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    resetMessages();
+    setLoading(true);
+
+    if (!email.includes('@') || !email) {
+      setError('Please enter a valid email');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const result = await requestPasswordReset(email);
+      if (result.resetCode) {
+        setIssuedResetCode(result.resetCode);
+        setResetCode(result.resetCode);
+        setInfo(`Your reset code is below. It expires in ${result.expiresInMinutes ?? 60} minutes.`);
+        setView('reset');
+      } else {
+        setInfo(
+          'If an account exists for this email, a reset code was created. If you do not see a code, double-check the email or sign up.',
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    resetMessages();
+    setLoading(true);
+
+    if (!resetCode.trim()) {
+      setError('Please enter your reset code');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await resetPassword(resetCode.trim(), password);
+      setInfo('Password updated successfully. Signing you in...');
+      if (onPasswordReset) {
+        await onPasswordReset();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyResetCode = async () => {
+    if (!issuedResetCode) return;
+    try {
+      await navigator.clipboard.writeText(issuedResetCode);
+      setInfo('Reset code copied to clipboard.');
+    } catch {
+      setInfo('Could not copy automatically. Select and copy the code manually.');
+    }
+  };
+
+  const title =
+    view === 'login'
+      ? 'Welcome to ExpenseAI'
+      : view === 'signup'
+        ? 'Create Account'
+        : view === 'forgot'
+          ? 'Forgot Password'
+          : 'Reset Password';
+
+  const subtitle =
+    view === 'login'
+      ? 'Please sign in to continue'
+      : view === 'signup'
+        ? 'Sign up to get started'
+        : view === 'forgot'
+          ? 'Enter your account email to get a reset code'
+          : 'Enter your reset code and choose a new password';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-300 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8 space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-            {isLogin ? 'Welcome to ExpenseAI' : 'Create Account'}
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            {isLogin ? 'Please sign in to continue' : 'Sign up to get started'}
-          </p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{title}</h1>
+          <p className="text-slate-600 dark:text-slate-400">{subtitle}</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className="w-full"
-              disabled={loading}
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              className="w-full"
-              disabled={loading}
-            />
-          </div>
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          )}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? (isLogin ? 'Signing in...' : 'Creating account...') : isLogin ? 'Sign In' : 'Sign Up'}
-          </Button>
-        </form>
-        <div className="text-center text-sm text-slate-500 dark:text-slate-400">
-          {isLogin ? (
+
+        {view === 'forgot' && (
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+              Step 1 of 2 — Get your reset code
+            </p>
+            <div>
+              <Label htmlFor="forgot-email">Email</Label>
+              <Input
+                type="email"
+                id="forgot-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your account email"
+                className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800"
+                disabled={loading}
+              />
+            </div>
+            {info && <p className="text-sm text-emerald-700 dark:text-emerald-400">{info}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <Button type="submit" className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800" disabled={loading}>
+              {loading ? 'Sending reset code...' : 'Get reset code'}
+            </Button>
+            {issuedResetCode && (
+              <Button
+                type="button"
+                
+                className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800"
+                onClick={() => switchView('reset')}
+              >
+                Continue to set new password
+              </Button>
+            )}
+          </form>
+        )}
+
+        {view === 'reset' && (
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+              Step 2 of 2 — Create your new password
+            </p>
+            {info && <p className="text-sm text-emerald-700 dark:text-emerald-400">{info}</p>}
+            {issuedResetCode && (
+              <ResetCodeBox code={issuedResetCode} onCopy={() => void copyResetCode()} />
+            )}
+            <div>
+              <Label htmlFor="reset-code">Reset code</Label>
+              <Input
+                type="text"
+                id="reset-code"
+                value={resetCode}
+                onChange={(e) => setResetCode(e.target.value)}
+                placeholder="Paste your reset code"
+                className="w-full font-mono text-sm"
+                disabled={loading}
+                autoComplete="one-time-code"
+              />
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                Enter your new password below
+              </p>
+            <div>
+              <Label htmlFor="new-password">New password</Label>
+              <Input
+                type="password"
+                id="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 6 characters"
+                className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800"
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Confirm new password</Label>
+              <Input
+                type="password"
+                id="confirm-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter your new password"
+                className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800"
+                disabled={loading}
+              />
+            </div>
+            </div>
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <Button type="submit" className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800" disabled={loading}>
+              {loading ? 'Updating password...' : 'Set new password'}
+            </Button>
+          </form>
+        )}
+
+        {(view === 'login' || view === 'signup') && (
+          <form onSubmit={handleLoginOrSignUp} className="space-y-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800"
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800"
+                disabled={loading}
+              />
+            </div>
+            {view === 'login' && (
+              <p className="text-right text-sm">
+                <span
+                  className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                  onClick={() => switchView('forgot')}
+                >
+                  Forgot password?
+                </span>
+              </p>
+            )}
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <Button type="submit" className="w-full border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800" disabled={loading}>
+              {loading
+                ? view === 'login'
+                  ? 'Signing in...'
+                  : 'Creating account...'
+                : view === 'login'
+                  ? 'Sign In'
+                  : 'Sign Up'}
+            </Button>
+          </form>
+        )}
+
+        <div className="text-center text-sm text-slate-500 dark:text-slate-400 space-y-2">
+          {view === 'login' && (
             <p>
-              Don't have an account? <span className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer" onClick={() => setIsLogin(false)}>
+              Don&apos;t have an account?{' '}
+              <span
+                className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                onClick={() => switchView('signup')}
+              >
                 Sign up
               </span>
             </p>
-          ) : (
+          )}
+          {view === 'signup' && (
             <p>
-              Already have an account? <span className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer" onClick={() => setIsLogin(true)}>
+              Already have an account?{' '}
+              <span
+                className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                onClick={() => switchView('login')}
+              >
                 Sign in
+              </span>
+            </p>
+          )}
+          {view === 'forgot' && (
+            <p>
+              Remember your password?{' '}
+              <span
+                className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                onClick={() => switchView('login')}
+              >
+                Back to sign in
+              </span>
+            </p>
+          )}
+          {view === 'reset' && (
+            <p>
+              <span
+                className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                onClick={() => switchView('forgot')}
+              >
+                Request a new code
+              </span>
+              {' · '}
+              <span
+                className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                onClick={() => switchView('login')}
+              >
+                Back to sign in
               </span>
             </p>
           )}

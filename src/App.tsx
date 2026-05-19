@@ -161,7 +161,17 @@ export default function App() {
             {appError}
           </div>
         )}
-        <Login onLogin={handleLogin} onSignUp={handleSignUp} />
+        <Login
+          onLogin={handleLogin}
+          onSignUp={handleSignUp}
+          onPasswordReset={async () => {
+            const currentUser = await fetchCurrentUser();
+            const savedExpenses = await fetchExpenses();
+            setUser(currentUser);
+            setExpenses(sortExpensesByDate(savedExpenses));
+            setAppError(null);
+          }}
+        />
       </>
     );
   }

@@ -24,6 +24,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "backend" / "data" / "expenseai.sqlite3"
 SESSION_DAYS = 30
+RESET_HOURS = 1
 MAX_JSON_BYTES = 1024 * 1024
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -35,6 +36,10 @@ def now_iso() -> str:
 
 def add_days(days: int) -> str:
     return (datetime.now(UTC) + timedelta(days=days)).isoformat(timespec="seconds")
+
+
+def add_hours(hours: int) -> str:
+    return (datetime.now(UTC) + timedelta(hours=hours)).isoformat(timespec="seconds")
 
 
 def hash_token(token: str) -> str:
@@ -127,6 +132,14 @@ class Database:
                     ai_suggested INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    token_hash TEXT PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 );
 
@@ -273,6 +286,14 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
             self.handle_logout()
             return
 
+        if self.command == "POST" and path == "/api/auth/forgot-password":
+            self.handle_forgot_password()
+            return
+
+        if self.command == "POST" and path == "/api/auth/reset-password":
+            self.handle_reset_password()
+            return
+
         if path == "/api/expenses":
             if self.command == "GET":
                 self.handle_list_expenses()
@@ -336,12 +357,79 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                 conn.execute("DELETE FROM sessions WHERE token_hash = ?", (hash_token(token),))
         self.send_json({"ok": True})
 
-    def clean_credentials(self, data: dict[str, Any]) -> tuple[str, str]:
+    def clean_email(self, data: dict[str, Any]) -> str:
         email = str(data.get("email", "")).strip().lower()
-        password = str(data.get("password", ""))
-
         if not EMAIL_RE.match(email):
             raise ApiError(HTTPStatus.BAD_REQUEST, "Please enter a valid email address")
+        return email
+
+    def handle_forgot_password(self) -> None:
+        email = self.clean_email(self.read_json())
+        response: dict[str, Any] = {
+            "message": "If an account exists for this email, use the reset code below to choose a new password.",
+        }
+
+        with self.db.connect() as conn:
+            conn.execute("DELETE FROM password_reset_tokens WHERE expires_at < ?", (now_iso(),))
+            user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+            if user is None:
+                self.send_json(response)
+                return
+
+            user_id = int(user["id"])
+            conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+            reset_token = secrets.token_urlsafe(32)
+            conn.execute(
+                """
+                INSERT INTO password_reset_tokens (token_hash, user_id, created_at, expires_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (hash_token(reset_token), user_id, now_iso(), add_hours(RESET_HOURS)),
+            )
+
+        response["resetCode"] = reset_token
+        response["expiresInMinutes"] = RESET_HOURS * 60
+        self.send_json(response)
+
+    def handle_reset_password(self) -> None:
+        data = self.read_json()
+        reset_token = str(data.get("token", "")).strip()
+        password = str(data.get("password", ""))
+
+        if not reset_token:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "Reset code is required")
+        if len(password) < 6:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "Password must be at least 6 characters")
+
+        with self.db.connect() as conn:
+            conn.execute("DELETE FROM password_reset_tokens WHERE expires_at < ?", (now_iso(),))
+            row = conn.execute(
+                """
+                SELECT user_id
+                FROM password_reset_tokens
+                WHERE token_hash = ? AND expires_at >= ?
+                """,
+                (hash_token(reset_token), now_iso()),
+            ).fetchone()
+            if row is None:
+                raise ApiError(HTTPStatus.BAD_REQUEST, "Invalid or expired reset code. Request a new one.")
+
+            user_id = int(row["user_id"])
+            password_hash, salt = hash_password(password)
+            conn.execute(
+                "UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?",
+                (password_hash, salt, user_id),
+            )
+            conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+            session_token = self.create_session(conn, user_id)
+            user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+        self.send_json({"user": user_payload(user), "token": session_token})
+
+    def clean_credentials(self, data: dict[str, Any]) -> tuple[str, str]:
+        email = self.clean_email(data)
+        password = str(data.get("password", ""))
         if len(password) < 6:
             raise ApiError(HTTPStatus.BAD_REQUEST, "Password must be at least 6 characters")
         return email, password

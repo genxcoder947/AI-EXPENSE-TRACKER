@@ -109,6 +109,28 @@ export async function logout(): Promise<void> {
   }
 }
 
+export interface ForgotPasswordResult {
+  message: string;
+  resetCode?: string;
+  expiresInMinutes?: number;
+}
+
+export async function requestPasswordReset(email: string): Promise<ForgotPasswordResult> {
+  return request<ForgotPasswordResult>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token: string, password: string): Promise<AuthSession> {
+  const session = await request<AuthSession>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  });
+  setAuthToken(session.token);
+  return session;
+}
+
 export async function fetchExpenses(): Promise<Expense[]> {
   const data = await request<{ expenses: Expense[] }>('/expenses');
   return data.expenses;
