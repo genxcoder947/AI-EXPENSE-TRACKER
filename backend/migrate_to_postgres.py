@@ -5,9 +5,10 @@ Migration script to move data from SQLite to PostgreSQL
 import sqlite3
 import psycopg2
 from pathlib import Path
+import os
 
-# SQLite database path
-SQLITE_DB = Path(__file__).parents[1] / "backend" / "data" / "expenseai.sqlite3"
+# SQLite database path (desktop app location)
+SQLITE_DB = Path.home() / "Library" / "Application Support" / "ExpenseAI" / "expenseai.sqlite3"
 
 # PostgreSQL connection details
 PG_CONFIG = {

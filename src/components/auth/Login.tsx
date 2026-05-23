@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Card } from '../ui/card';
 import { requestPasswordReset, resetPassword } from '../../lib/api';
-import { Brain, Sparkles, Zap, Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Brain, Sparkles, Zap, Lock, Mail, ArrowRight, Eye, EyeOff, TrendingUp, Wallet, CreditCard, BarChart3, Bot, Cpu, Database, Network, Shield } from 'lucide-react';
 
 type AuthView = 'login' | 'signup' | 'forgot' | 'reset';
 
@@ -45,6 +45,22 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const aiImages = [
+    'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1555255707-c07966088b7b?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=800&h=600&fit=crop'
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % aiImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const resetMessages = () => {
     setError(null);
@@ -106,9 +122,14 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
     try {
       const result = await requestPasswordReset(email);
       if (result.resetCode) {
+        // Email not configured, show code directly
         setIssuedResetCode(result.resetCode);
         setResetCode(result.resetCode);
         setInfo(`Your reset code is below. It expires in ${result.expiresInMinutes ?? 60} minutes.`);
+        setView('reset');
+      } else if (result.emailEnabled) {
+        // Email configured, OTP sent to email
+        setInfo('A password reset OTP has been sent to your email address. Please check your inbox.');
         setView('reset');
       } else {
         setInfo(
@@ -193,6 +214,17 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        
+        {/* Floating particles */}
+        <div className="absolute top-20 left-20 w-4 h-4 bg-purple-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '3s' }}></div>
+        <div className="absolute top-40 right-40 w-3 h-3 bg-cyan-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '4s', animationDelay: '1s' }}></div>
+        <div className="absolute bottom-32 left-32 w-5 h-5 bg-pink-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '5s', animationDelay: '2s' }}></div>
+        <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-purple-300 rounded-full animate-bounce opacity-50" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}></div>
+        <div className="absolute bottom-1/4 right-1/3 w-3 h-3 bg-cyan-300 rounded-full animate-bounce opacity-50" style={{ animationDuration: '3.5s', animationDelay: '1.5s' }}></div>
+        
+        {/* Moving gradient orbs */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-r from-purple-600/30 to-cyan-600/30 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }}></div>
+        <div className="absolute bottom-1/3 right-1/4 w-72 h-72 bg-gradient-to-r from-pink-600/20 to-purple-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }}></div>
       </div>
 
       {/* Grid pattern overlay */}
@@ -206,11 +238,26 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
               <div className="absolute -inset-4 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-2xl blur-lg opacity-30"></div>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                 <img
-                  src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=600&fit=crop"
+                  src={aiImages[currentImageIndex]}
                   alt="AI Technology"
-                  className="w-full h-[500px] object-cover"
+                  className="w-full h-[500px] object-cover transition-opacity duration-1000"
+                  style={{ opacity: 1 }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
+                
+                {/* Floating AI Icons */}
+                <div className="absolute top-8 right-8 flex gap-3">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-full p-3 border border-white/20 animate-bounce" style={{ animationDelay: '0s' }}>
+                    <Bot className="w-6 h-6 text-cyan-400" />
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-full p-3 border border-white/20 animate-bounce" style={{ animationDelay: '0.5s' }}>
+                    <Cpu className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-full p-3 border border-white/20 animate-bounce" style={{ animationDelay: '1s' }}>
+                    <Database className="w-6 h-6 text-pink-400" />
+                  </div>
+                </div>
+
                 <div className="absolute bottom-0 left-0 right-0 p-8">
                   <div className="flex items-center gap-3 mb-4">
                     <Brain className="w-10 h-10 text-cyan-400" />
@@ -225,20 +272,34 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
 
             {/* Feature highlights */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
                 <Sparkles className="w-8 h-8 text-purple-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Smart AI</h3>
                 <p className="text-slate-400 text-xs mt-1">Intelligent categorization</p>
               </div>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
                 <Zap className="w-8 h-8 text-cyan-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Fast</h3>
                 <p className="text-slate-400 text-xs mt-1">Lightning quick insights</p>
               </div>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
                 <Lock className="w-8 h-8 text-pink-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Secure</h3>
                 <p className="text-slate-400 text-xs mt-1">Your data stays local</p>
+              </div>
+            </div>
+
+            {/* Additional AI features */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
+                <TrendingUp className="w-8 h-8 text-green-400 mb-2" />
+                <h3 className="text-white font-semibold text-sm">Analytics</h3>
+                <p className="text-slate-400 text-xs mt-1">Smart spending insights</p>
+              </div>
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
+                <Wallet className="w-8 h-8 text-yellow-400 mb-2" />
+                <h3 className="text-white font-semibold text-sm">Budgeting</h3>
+                <p className="text-slate-400 text-xs mt-1">AI-powered suggestions</p>
               </div>
             </div>
           </div>

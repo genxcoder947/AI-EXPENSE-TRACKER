@@ -9,10 +9,13 @@ import mimetypes
 import os
 import re
 import secrets
+import smtplib
 import sys
 import traceback
 import uuid
 from datetime import UTC, datetime, timedelta
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -36,6 +39,13 @@ DEFAULT_PG_CONFIG = {
     'password': os.environ.get('PGPASSWORD', 'expenseai_secure_password_2024'),
     'port': int(os.environ.get('PGPORT', '5432'))
 }
+EMAIL_CONFIG = {
+    'smtp_server': os.environ.get('SMTP_SERVER', 'smtp.gmail.com'),
+    'smtp_port': int(os.environ.get('SMTP_PORT', '587')),
+    'email': os.environ.get('EMAIL_ADDRESS', ''),
+    'password': os.environ.get('EMAIL_PASSWORD', ''),
+    'use_tls': os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+}
 SESSION_DAYS = 30
 RESET_HOURS = 1
 MAX_JSON_BYTES = 1024 * 1024
@@ -45,6 +55,55 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def send_otp_email(to_email: str, otp: str) -> bool:
+    """Send OTP email to user"""
+    if not EMAIL_CONFIG['email'] or not EMAIL_CONFIG['password']:
+        return False
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'ExpenseAI - Password Reset OTP'
+        msg['From'] = EMAIL_CONFIG['email']
+        msg['To'] = to_email
+        
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center;">
+                <h1 style="color: white; margin: 0;">ExpenseAI</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Password Reset Request</p>
+            </div>
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 10px; margin-top: 20px;">
+                <p style="color: #333; font-size: 16px;">You requested a password reset for your ExpenseAI account.</p>
+                <p style="color: #333; font-size: 16px;">Your One-Time Password (OTP) is:</p>
+                <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; border: 2px dashed #667eea;">
+                    <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 5px;">{otp}</span>
+                </div>
+                <p style="color: #666; font-size: 14px;">This OTP will expire in 1 hour.</p>
+                <p style="color: #666; font-size: 14px;">If you didn't request this password reset, please ignore this email.</p>
+            </div>
+            <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                <p>This is an automated email from ExpenseAI. Please do not reply.</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
+        if EMAIL_CONFIG['use_tls']:
+            server.starttls()
+        server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
+        server.send_message(msg)
+        server.quit()
+        
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
 
 
 def add_days(days: int) -> str:
@@ -492,8 +551,13 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
 
     def handle_forgot_password(self) -> None:
         email = self.clean_email(self.read_json())
+        
+        # Check if email is configured
+        email_enabled = bool(EMAIL_CONFIG['email'] and EMAIL_CONFIG['password'])
+        
         response: dict[str, Any] = {
-            "message": "If an account exists for this email, use the reset code below to choose a new password.",
+            "message": "If an account exists for this email, a password reset OTP has been sent to your email address.",
+            "emailEnabled": email_enabled
         }
 
         with self.db.connect() as conn:
@@ -535,8 +599,19 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                     (hash_token(reset_token), user_id, now_iso(), add_hours(RESET_HOURS)),
                 )
 
-        response["resetCode"] = reset_token
-        response["expiresInMinutes"] = RESET_HOURS * 60
+        # Send email if configured
+        if email_enabled:
+            email_sent = send_otp_email(email, reset_token)
+            if not email_sent:
+                response["message"] = "Failed to send email. Please check your email configuration."
+                response["resetCode"] = reset_token  # Fallback to showing code
+                response["expiresInMinutes"] = RESET_HOURS * 60
+        else:
+            # Fallback to showing code if email not configured
+            response["message"] = "Email not configured. Use the reset code below to choose a new password."
+            response["resetCode"] = reset_token
+            response["expiresInMinutes"] = RESET_HOURS * 60
+
         self.send_json(response)
 
     def handle_reset_password(self) -> None:
@@ -574,6 +649,7 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                 cur.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
                 cur.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
                 session_token = self.create_session(conn, user_id)
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
                 user = cur.fetchone()
                 conn.commit()

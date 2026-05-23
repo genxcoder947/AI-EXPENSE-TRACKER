@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Expense } from '../types';
 import { formatCurrency, formatDate } from '../utils/helpers';
-import { Calendar, TrendingUp, TrendingDown, Search, X, Clock, Tag, DollarSign } from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown, Search, X, Clock, Tag, DollarSign, Settings, Eye, EyeOff } from 'lucide-react';
 
-type TimelineView = '24h' | '7d' | '30d' | '90d' | '1y' | 'all';
+type TimelineView = 'today' | 'thisWeek' | 'thisMonth' | 'thisYear' | '24h' | '7d' | '30d' | '90d' | '1y' | 'all';
 
 interface ExpenseTimelineGraphProps {
   expenses: Expense[];
@@ -14,8 +14,13 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
   const [timelineView, setTimelineView] = useState<TimelineView>('30d');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showStats, setShowStats] = useState(true);
 
   const timelineOptions = [
+    { value: 'today' as TimelineView, label: 'Today' },
+    { value: 'thisWeek' as TimelineView, label: 'This Week' },
+    { value: 'thisMonth' as TimelineView, label: 'This Month' },
+    { value: 'thisYear' as TimelineView, label: 'This Year' },
     { value: '24h' as TimelineView, label: '24 Hours' },
     { value: '7d' as TimelineView, label: '7 Days' },
     { value: '30d' as TimelineView, label: '30 Days' },
@@ -29,6 +34,22 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
     const cutoffDate = new Date();
 
     switch (timelineView) {
+      case 'today':
+        cutoffDate.setHours(0, 0, 0, 0);
+        break;
+      case 'thisWeek':
+        const dayOfWeek = now.getDay();
+        cutoffDate.setDate(now.getDate() - dayOfWeek);
+        cutoffDate.setHours(0, 0, 0, 0);
+        break;
+      case 'thisMonth':
+        cutoffDate.setDate(1);
+        cutoffDate.setHours(0, 0, 0, 0);
+        break;
+      case 'thisYear':
+        cutoffDate.setMonth(0, 1);
+        cutoffDate.setHours(0, 0, 0, 0);
+        break;
       case '24h':
         cutoffDate.setHours(now.getHours() - 24);
         break;
@@ -79,6 +100,18 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
       let key: string;
 
       switch (timelineView) {
+        case 'today':
+          key = date.toLocaleTimeString('en-US', { hour: '2-digit', hour12: true });
+          break;
+        case 'thisWeek':
+          key = date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+          break;
+        case 'thisMonth':
+          key = date.toLocaleDateString('en-US', { day: 'numeric' });
+          break;
+        case 'thisYear':
+          key = date.toLocaleDateString('en-US', { month: 'short' });
+          break;
         case '24h':
           key = date.toLocaleTimeString('en-US', { hour: '2-digit', hour12: true });
           break;
@@ -149,6 +182,17 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
               Track your spending over time
             </p>
           </div>
+          <button
+            onClick={() => setShowStats(!showStats)}
+            className={`p-2 rounded-lg transition-all ${
+              isDarkMode 
+                ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' 
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+            }`}
+            title={showStats ? 'Hide stats' : 'Show stats'}
+          >
+            {showStats ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
         </div>
 
         {/* Search Bar */}
@@ -204,26 +248,28 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
       </div>
 
       {/* Stats */}
-      <div className="p-6 grid grid-cols-3 gap-4 border-b border-slate-200 dark:border-slate-700">
-        <div>
-          <p className={`text-sm ${subTextColor}`}>Total</p>
-          <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">
-            {formatCurrency(totalAmount)}
-          </p>
+      {showStats && (
+        <div className="p-6 grid grid-cols-3 gap-4 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <p className={`text-sm ${subTextColor}`}>Total</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">
+              {formatCurrency(totalAmount)}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${subTextColor}`}>Average</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">
+              {formatCurrency(averageAmount)}
+            </p>
+          </div>
+          <div>
+            <p className={`text-sm ${subTextColor}`}>Transactions</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">
+              {filteredExpenses.length}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className={`text-sm ${subTextColor}`}>Average</p>
-          <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">
-            {formatCurrency(averageAmount)}
-          </p>
-        </div>
-        <div>
-          <p className={`text-sm ${subTextColor}`}>Transactions</p>
-          <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">
-            {filteredExpenses.length}
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* Trend Indicator */}
       {trend !== null && (
