@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Expense } from '../types';
 import { formatCurrency, formatDate } from '../utils/helpers';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { Check, NotebookText, Pencil, Sparkles, Trash2, X } from 'lucide-react';
+import { Check, NotebookText, Pencil, Sparkles, Trash2, X, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
 
 interface ExpenseListProps {
   expenses: Expense[];
@@ -48,6 +48,21 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
   const [draft, setDraft] = useState<ExpenseDraft | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isPartiallyHidden, setIsPartiallyHidden] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      setShowScrollTop(scrollContainerRef.current.scrollTop > 200);
+    }
+  };
+
+  const scrollToTop = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const startEditing = (expense: Expense) => {
     setEditingId(expense.id);
@@ -119,15 +134,29 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
   return (
     <Card className="bg-white border border-slate-200 shadow-sm">
       <CardHeader className="border-b border-slate-100 bg-slate-50">
-        <CardTitle className="text-lg font-semibold text-slate-800">Recent Expenses</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-slate-800">Recent Expenses</CardTitle>
+          <button
+            onClick={() => setIsPartiallyHidden(!isPartiallyHidden)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all text-sm font-medium"
+            title={isPartiallyHidden ? "Show all details" : "Partially hide expenses"}
+          >
+            {isPartiallyHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            {isPartiallyHidden ? "Show All" : "Hide Details"}
+          </button>
+        </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 relative">
         {actionError && (
           <div className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
             {actionError}
           </div>
         )}
-        <div className="divide-y divide-slate-100">
+        <div 
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="max-h-[600px] overflow-y-auto divide-y divide-slate-100 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400"
+        >
           {expenses.map((expense) => {
             const isEditing = editingId === expense.id && draft;
 
@@ -199,60 +228,79 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
             return (
               <div
                 key={expense.id}
-                className="flex items-center justify-between gap-4 p-4 hover:bg-slate-50 transition-colors group"
+                className={`flex items-center justify-between gap-4 p-4 hover:bg-slate-50 transition-colors group ${isPartiallyHidden ? 'py-3' : ''}`}
               >
                 <div className="flex min-w-0 items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg shrink-0">
+                  <div className={`w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg shrink-0 ${isPartiallyHidden ? 'w-8 h-8' : ''}`}>
                     {categoryIcons[expense.category] || '📦'}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-800 truncate">{expense.description}</p>
-                      {expense.aiSuggested && (
+                      <p className={`font-medium text-slate-800 truncate ${isPartiallyHidden ? 'text-sm' : ''}`}>{expense.description}</p>
+                      {expense.aiSuggested && !isPartiallyHidden && (
                         <span className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">
                           <Sparkles className="w-3 h-3" />
                           AI
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-slate-500">{expense.category}</span>
-                      <span className="text-slate-300">•</span>
-                      <span className="text-xs text-slate-500">{formatDate(expense.date)}</span>
-                    </div>
-                    {expense.notes && (
-                      <p className="mt-1 flex max-w-xl items-start gap-1.5 text-xs leading-relaxed text-slate-500">
-                        <NotebookText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                        <span className="line-clamp-2">{expense.notes}</span>
-                      </p>
+                    {!isPartiallyHidden && (
+                      <>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-slate-500">{expense.category}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-xs text-slate-500">{formatDate(expense.date)}</span>
+                        </div>
+                        {expense.notes && (
+                          <p className="mt-1 flex max-w-xl items-start gap-1.5 text-xs leading-relaxed text-slate-500">
+                            <NotebookText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            <span className="line-clamp-2">{expense.notes}</span>
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="font-semibold text-slate-800">{formatCurrency(expense.amount)}</span>
-                  <button
-                    type="button"
-                    onClick={() => startEditing(expense)}
-                    disabled={pendingId === expense.id}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-all focus:opacity-100"
-                    aria-label={`Edit ${expense.description}`}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteExpense(expense)}
-                    disabled={pendingId === expense.id}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all focus:opacity-100"
-                    aria-label={`Delete ${expense.description}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <span className={`font-semibold text-slate-800 ${isPartiallyHidden ? 'text-sm' : ''}`}>{formatCurrency(expense.amount)}</span>
+                  {!isPartiallyHidden && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startEditing(expense)}
+                        disabled={pendingId === expense.id}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-all focus:opacity-100"
+                        aria-label={`Edit ${expense.description}`}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteExpense(expense)}
+                        disabled={pendingId === expense.id}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md transition-all focus:opacity-100"
+                        aria-label={`Delete ${expense.description}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
+        
+        {/* Scroll to top button */}
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className="absolute bottom-4 right-4 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110 z-10"
+            aria-label="Scroll to top"
+          >
+            <ChevronUp className="w-5 h-5" />
+          </button>
+        )}
       </CardContent>
     </Card>
   );

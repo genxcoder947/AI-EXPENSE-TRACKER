@@ -19,7 +19,7 @@ const WEAK_TOTAL_HINTS = /\btotal\b|payable|subtotal/i;
 const NEGATIVE_LINE_HINTS =
   /saved\s|you\s+saved|discount|cashback|delivery\s*fee|platform\s*fee|packaging|gst\s*breakup|tax\s*summary/i;
 const NON_ITEM_LINE_HINTS =
-  /total|subtotal|payable|paid|balance|change|discount|cashback|saved|tax|gst|cgst|sgst|igst|\bfee\b|\bcharge\b|delivery|platform|packaging|\btip\b|round\s*off|invoice|receipt|bill\s*no|order\s*id|order\s*no|token|date|time|phone|mobile|address|table|cashier|payment|upi|card|cash|wallet|thank\s*you|powered\s*by|fssai/i;
+  /total|subtotal|payable|paid|balance|change|discount|cashback|saved|tax|gst|cgst|sgst|igst|\bfee\b|\bcharge\b|delivery|platform|packaging|\btip\b|round\s*off|invoice|receipt|bill\s*no|order\s*id|order\s*no|token|date|time|phone|mobile|address|table|cashier|payment|upi|card|cash|wallet|thank\s*you|powered\s*by|fssai|store|shop|mall|center|road|street|city|state|pin|zip|email|website|gstin|vat/i;
 const DATE_OR_TIME_HINTS =
   /\b(?:date|time|invoice|bill\s*no|order\s*id|order\s*no|token|phone|mobile|address|fssai)\b/i;
 const DATE_OR_TIME_VALUE =
@@ -285,14 +285,22 @@ function buildReceiptNotes(items: ReceiptLineItem[], total: number | null): stri
   const orderedCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
   const itemLines = items.map((item, index) => {
     const quantity = item.quantity && item.quantity > 1 ? `${item.quantity} x ` : '';
-    return `${index + 1}. ${quantity}${item.name} - ${formatReceiptAmount(item.amount)}`;
+    const unitPrice = item.quantity && item.quantity > 1 
+      ? ` (${formatReceiptAmount(item.amount / item.quantity)} each)` 
+      : '';
+    return `${index + 1}. ${quantity}${item.name}${unitPrice} = ${formatReceiptAmount(item.amount)}`;
   });
 
   return [
-    `Scanned order details`,
-    `Items ordered: ${orderedCount}`,
+    `📋 Scanned Receipt Details`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `📦 Items ordered: ${orderedCount}`,
+    ``,
     ...itemLines,
-    ...(total !== null ? [`Receipt total: ${formatReceiptAmount(total)}`] : []),
+    ``,
+    ...(total !== null ? [`💰 Receipt total: ${formatReceiptAmount(total)}`] : []),
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `⚠️ Please verify all details before saving`
   ].join('\n');
 }
 
@@ -301,10 +309,25 @@ function countOrderedItems(items: ReceiptLineItem[]): number {
 }
 
 function buildReceiptDescription(merchant: string | null, items: ReceiptLineItem[]): string {
+  // Remove address-like patterns from item names
+  const cleanItemName = (name: string): string => {
+    return name
+      .replace(/\b(?:street|road|lane|avenue|boulevard|drive|court|place|way|circle|square|terrace)\b/gi, '')
+      .replace(/\b(?:city|town|village|state|country|district|zone|area|sector)\b/gi, '')
+      .replace(/\b(?:pin|zip|postal|code)\b/gi, '')
+      .replace(/\b(?:no|number)\s*\d+/gi, '')
+      .replace(/\b(?:building|shop|store|mall|center|centre)\b/gi, '')
+      .replace(/\b(?:near|opposite|behind|beside|next to)\b/gi, '')
+      .replace(/\b(?:phone|mobile|email|contact)\b/gi, '')
+      .replace(/\b(?:gstin|vat|tax)\b/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  };
+
   if (items.length > 0) {
     const itemSummary = items.slice(0, 3).map((item) => {
       const quantity = item.quantity && item.quantity > 1 ? `${item.quantity} x ` : '';
-      return `${quantity}${item.name}`;
+      return `${quantity}${cleanItemName(item.name)}`;
     });
     const suffix = items.length > itemSummary.length ? ` +${items.length - itemSummary.length} more` : '';
     const description = `${merchant ? `${merchant}: ` : ''}${itemSummary.join(', ')}${suffix}`;

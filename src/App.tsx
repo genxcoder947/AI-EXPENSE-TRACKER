@@ -10,6 +10,9 @@ import { sortExpensesByDate } from './utils/helpers';
 import { CategoryPieChart } from './components/CategoryPieChart';
 import { Sparkles, Moon, Sun } from 'lucide-react';
 import Login from './components/auth/Login';
+import AIChatbot from './components/AIChatbot';
+import Sidebar from './components/Sidebar';
+import ExpenseTimelineGraph from './components/ExpenseTimelineGraph';
 import {
   type ApiUser,
   clearStoredSession,
@@ -25,11 +28,15 @@ import {
   updateExpense,
 } from './lib/api';
 
+type View = 'dashboard' | 'add-expense' | 'history' | 'analytics' | 'insights' | 'settings';
+
 export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [user, setUser] = useState<ApiUser | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [appError, setAppError] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -178,61 +185,142 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">ExpenseAI</h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Smart expense tracking</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-200 dark:text-emerald-800 text-xs font-medium rounded-full">
-                {expenses.length} expenses
-              </span>
-              <button onClick={toggleTheme} className="p-2 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600">
-                {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-yellow-400" />}
-              </button>
-              <button onClick={() => void handleLogout()} className="p-2 rounded bg-red-100 text-red-700 dark:bg-rose-900/40 dark:text-rose-200 hover:bg-red-200 dark:hover:bg-rose-900/60">
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Sidebar */}
+      <Sidebar
+        currentView={currentView}
+        onViewChange={setCurrentView}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isDarkMode={darkMode}
+      />
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {/* Stats Overview */}
-        <div className="mb-8">
-          <StatsOverview expenses={expenses} />
-        </div>
-
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
-            <ExpenseForm onAddExpense={handleAddExpense} />
-            <ExpenseList
-              expenses={expenses}
-              onDeleteExpense={handleDeleteExpense}
-              onUpdateExpense={handleUpdateExpense}
-            />
+      <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+        {/* Header */}
+        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+          <div className="max-w-6xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">ExpenseAI</h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Smart expense tracking</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-200 dark:text-emerald-800 text-xs font-medium rounded-full">
+                  {expenses.length} expenses
+                </span>
+                <button onClick={toggleTheme} className="p-2 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600">
+                  {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-yellow-400" />}
+                </button>
+                <button onClick={() => void handleLogout()} className="p-2 rounded bg-red-100 text-red-700 dark:bg-rose-900/40 dark:text-rose-200 hover:bg-red-200 dark:hover:bg-rose-900/60">
+                  Logout
+                </button>
+              </div>
+            </div>
           </div>
+        </header>
 
-          {/* Right Column */}
-          <div className="space-y-6">
-            <InsightsPanel insights={insights} />
-            <SpendingChart categoryTotals={categoryTotals} />
-            <CategoryPieChart expenses={expenses} />
-          </div>
-        </div>
-      </main>
+        {/* Main Content Area */}
+        <main className="max-w-6xl mx-auto px-4 py-8">
+          {currentView === 'dashboard' && (
+            <>
+              {/* Stats Overview */}
+              <div className="mb-8">
+                <StatsOverview expenses={expenses} />
+              </div>
+
+              {/* Main Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column */}
+                <div className="lg:col-span-2 space-y-6">
+                  <ExpenseForm onAddExpense={handleAddExpense} />
+                  <ExpenseList
+                    expenses={expenses}
+                    onDeleteExpense={handleDeleteExpense}
+                    onUpdateExpense={handleUpdateExpense}
+                  />
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  <InsightsPanel insights={insights} />
+                  <SpendingChart categoryTotals={categoryTotals} />
+                  <CategoryPieChart expenses={expenses} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {currentView === 'add-expense' && (
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Add New Expense</h2>
+              <ExpenseForm onAddExpense={handleAddExpense} />
+            </div>
+          )}
+
+          {currentView === 'history' && (
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Expense History</h2>
+              <ExpenseList
+                expenses={expenses}
+                onDeleteExpense={handleDeleteExpense}
+                onUpdateExpense={handleUpdateExpense}
+              />
+            </div>
+          )}
+
+          {currentView === 'analytics' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Analytics</h2>
+              <ExpenseTimelineGraph expenses={expenses} isDarkMode={darkMode} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <SpendingChart categoryTotals={categoryTotals} />
+                <CategoryPieChart expenses={expenses} />
+              </div>
+            </div>
+          )}
+
+          {currentView === 'insights' && (
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">AI Insights</h2>
+              <InsightsPanel insights={insights} />
+            </div>
+          )}
+
+          {currentView === 'settings' && (
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Settings</h2>
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-slate-800 dark:text-white">Dark Mode</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Toggle dark theme</p>
+                  </div>
+                  <button
+                    onClick={toggleTheme}
+                    className={`w-12 h-6 rounded-full transition-colors ${
+                      darkMode ? 'bg-purple-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        darkMode ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* AI Chatbot */}
+        <AIChatbot />
+      </div>
     </div>
   );
 }

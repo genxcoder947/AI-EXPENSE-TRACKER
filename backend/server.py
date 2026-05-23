@@ -9,7 +9,6 @@ import mimetypes
 import os
 import re
 import secrets
-import sqlite3
 import sys
 import traceback
 import uuid
@@ -20,9 +19,23 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
+try:
+    import psycopg2
+    import psycopg2.extras
+    USE_POSTGRES = True
+except ImportError:
+    USE_POSTGRES = False
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "backend" / "data" / "expenseai.sqlite3"
+DEFAULT_PG_CONFIG = {
+    'host': os.environ.get('PGHOST', 'localhost'),
+    'database': os.environ.get('PGDATABASE', 'expenseai'),
+    'user': os.environ.get('PGUSER', 'expenseai'),
+    'password': os.environ.get('PGPASSWORD', 'expenseai_secure_password_2024'),
+    'port': int(os.environ.get('PGPORT', '5432'))
+}
 SESSION_DAYS = 30
 RESET_HOURS = 1
 MAX_JSON_BYTES = 1024 * 1024
@@ -62,7 +75,7 @@ def verify_password(password: str, stored_hash: str, salt: str) -> bool:
     return hmac.compare_digest(computed_hash, stored_hash)
 
 
-def user_payload(row: sqlite3.Row) -> dict[str, Any]:
+def user_payload(row: Any) -> dict[str, Any]:
     return {
         "id": str(row["id"]),
         "email": row["email"],
@@ -70,7 +83,7 @@ def user_payload(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
-def expense_payload(row: sqlite3.Row) -> dict[str, Any]:
+def expense_payload(row: Any) -> dict[str, Any]:
     return {
         "id": row["id"],
         "description": row["description"],
@@ -90,63 +103,125 @@ class ApiError(Exception):
 
 
 class Database:
-    def __init__(self, path: Path):
-        self.path = path
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, path: Path | dict[str, Any] | None = None):
+        self.use_postgres = USE_POSTGRES
+        if self.use_postgres:
+            self.pg_config = DEFAULT_PG_CONFIG if isinstance(path, dict) or path is None else DEFAULT_PG_CONFIG
+        else:
+            self.path = path if isinstance(path, Path) else DEFAULT_DB
+            self.path.parent.mkdir(parents=True, exist_ok=True)
         self.init()
 
-    def connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
+    def connect(self):
+        if self.use_postgres:
+            conn = psycopg2.connect(**self.pg_config)
+            conn.autocommit = False
+            return conn
+        else:
+            import sqlite3
+            conn = sqlite3.connect(self.path)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON")
+            return conn
 
     def init(self) -> None:
-        with self.connect() as conn:
-            conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                    password_hash TEXT NOT NULL,
-                    password_salt TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                );
+        if self.use_postgres:
+            with self.connect() as conn:
+                cur = conn.cursor()
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id SERIAL PRIMARY KEY,
+                        email TEXT NOT NULL UNIQUE,
+                        password_hash TEXT NOT NULL,
+                        password_salt TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS sessions (
+                        token_hash TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        created_at TEXT NOT NULL,
+                        expires_at TEXT NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS expenses (
+                        id TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        description TEXT NOT NULL,
+                        amount REAL NOT NULL,
+                        category TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        notes TEXT,
+                        ai_suggested INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
+                """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                        token_hash TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        created_at TEXT NOT NULL,
+                        expires_at TEXT NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
+                """)
+                cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_expenses_user_date
+                        ON expenses(user_id, date DESC, created_at DESC);
+                """)
+                conn.commit()
+        else:
+            import sqlite3
+            with self.connect() as conn:
+                conn.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                        password_hash TEXT NOT NULL,
+                        password_salt TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    );
 
-                CREATE TABLE IF NOT EXISTS sessions (
-                    token_hash TEXT PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                );
+                    CREATE TABLE IF NOT EXISTS sessions (
+                        token_hash TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        created_at TEXT NOT NULL,
+                        expires_at TEXT NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
 
-                CREATE TABLE IF NOT EXISTS expenses (
-                    id TEXT PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
-                    description TEXT NOT NULL,
-                    amount REAL NOT NULL,
-                    category TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    notes TEXT,
-                    ai_suggested INTEGER NOT NULL DEFAULT 0,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                );
+                    CREATE TABLE IF NOT EXISTS expenses (
+                        id TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        description TEXT NOT NULL,
+                        amount REAL NOT NULL,
+                        category TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        notes TEXT,
+                        ai_suggested INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
 
-                CREATE TABLE IF NOT EXISTS password_reset_tokens (
-                    token_hash TEXT PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                );
+                    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                        token_hash TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        created_at TEXT NOT NULL,
+                        expires_at TEXT NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
 
-                CREATE INDEX IF NOT EXISTS idx_expenses_user_date
-                    ON expenses(user_id, date DESC, created_at DESC);
-                """
-            )
+                    CREATE INDEX IF NOT EXISTS idx_expenses_user_date
+                        ON expenses(user_id, date DESC, created_at DESC);
+                    """
+                )
 
 
 class ExpenseAIHandler(BaseHTTPRequestHandler):
@@ -229,7 +304,7 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
             raise ApiError(HTTPStatus.BAD_REQUEST, "Request body must be a JSON object")
         return data
 
-    def require_user(self) -> sqlite3.Row:
+    def require_user(self) -> Any:
         header = self.headers.get("Authorization", "")
         prefix = "Bearer "
         if not header.startswith(prefix):
@@ -241,32 +316,55 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
 
         token_hash = hash_token(token)
         with self.db.connect() as conn:
-            conn.execute("DELETE FROM sessions WHERE expires_at < ?", (now_iso(),))
-            row = conn.execute(
-                """
-                SELECT users.*
-                FROM sessions
-                JOIN users ON users.id = sessions.user_id
-                WHERE sessions.token_hash = ? AND sessions.expires_at >= ?
-                """,
-                (token_hash, now_iso()),
-            ).fetchone()
+            if self.db.use_postgres:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute("DELETE FROM sessions WHERE expires_at < %s", (now_iso(),))
+                cur.execute(
+                    """
+                    SELECT users.*
+                    FROM sessions
+                    JOIN users ON users.id = sessions.user_id
+                    WHERE sessions.token_hash = %s AND sessions.expires_at >= %s
+                    """,
+                    (token_hash, now_iso()),
+                )
+                row = cur.fetchone()
+                conn.commit()
+            else:
+                conn.execute("DELETE FROM sessions WHERE expires_at < ?", (now_iso(),))
+                row = conn.execute(
+                    """
+                    SELECT users.*
+                    FROM sessions
+                    JOIN users ON users.id = sessions.user_id
+                    WHERE sessions.token_hash = ? AND sessions.expires_at >= ?
+                    """,
+                    (token_hash, now_iso()),
+                ).fetchone()
 
         if row is None:
             raise ApiError(HTTPStatus.UNAUTHORIZED, "Session expired. Please sign in again.")
         return row
 
-    def create_session(self, conn: sqlite3.Connection, user_id: int) -> str:
+    def create_session(self, conn, user_id: int) -> str:
         token = secrets.token_urlsafe(32)
-        conn.execute(
-            "INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-            (hash_token(token), user_id, now_iso(), add_days(SESSION_DAYS)),
-        )
+        if self.db.use_postgres:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (%s, %s, %s, %s)",
+                (hash_token(token), user_id, now_iso(), add_days(SESSION_DAYS)),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+                (hash_token(token), user_id, now_iso(), add_days(SESSION_DAYS)),
+            )
         return token
 
     def handle_api(self, path: str) -> None:
         if self.command == "GET" and path == "/api/health":
-            self.send_json({"ok": True, "database": str(self.db.path)})
+            db_info = "PostgreSQL" if self.db.use_postgres else f"SQLite: {self.db.path}"
+            self.send_json({"ok": True, "database": db_info})
             return
 
         if self.command == "POST" and path == "/api/auth/register":
@@ -321,17 +419,33 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
 
         try:
             with self.db.connect() as conn:
-                cursor = conn.execute(
-                    """
-                    INSERT INTO users (email, password_hash, password_salt, created_at)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (email, password_hash, salt, now_iso()),
-                )
-                user_id = int(cursor.lastrowid)
-                token = self.create_session(conn, user_id)
-                user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        except sqlite3.IntegrityError:
+                if self.db.use_postgres:
+                    cur = conn.cursor()
+                    cur.execute(
+                        """
+                        INSERT INTO users (email, password_hash, password_salt, created_at)
+                        VALUES (%s, %s, %s, %s)
+                        RETURNING id
+                        """,
+                        (email, password_hash, salt, now_iso()),
+                    )
+                    user_id = cur.fetchone()[0]
+                    token = self.create_session(conn, user_id)
+                    cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+                    user = cur.fetchone()
+                    conn.commit()
+                else:
+                    cursor = conn.execute(
+                        """
+                        INSERT INTO users (email, password_hash, password_salt, created_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (email, password_hash, salt, now_iso()),
+                    )
+                    user_id = int(cursor.lastrowid)
+                    token = self.create_session(conn, user_id)
+                    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        except (psycopg2.IntegrityError if self.db.use_postgres else sqlite3.IntegrityError):
             raise ApiError(HTTPStatus.CONFLICT, "An account already exists with this email")
 
         self.send_json({"user": user_payload(user), "token": token}, HTTPStatus.CREATED)
@@ -341,11 +455,19 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
         email, password = self.clean_credentials(data)
 
         with self.db.connect() as conn:
-            user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-            if user is None or not verify_password(password, user["password_hash"], user["password_salt"]):
-                raise ApiError(HTTPStatus.UNAUTHORIZED, "Invalid email or password")
-
-            token = self.create_session(conn, int(user["id"]))
+            if self.db.use_postgres:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+                user = cur.fetchone()
+                if user is None or not verify_password(password, user["password_hash"], user["password_salt"]):
+                    raise ApiError(HTTPStatus.UNAUTHORIZED, "Invalid email or password")
+                token = self.create_session(conn, int(user["id"]))
+                conn.commit()
+            else:
+                user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+                if user is None or not verify_password(password, user["password_hash"], user["password_salt"]):
+                    raise ApiError(HTTPStatus.UNAUTHORIZED, "Invalid email or password")
+                token = self.create_session(conn, int(user["id"]))
 
         self.send_json({"user": user_payload(user), "token": token})
 
@@ -354,7 +476,12 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
         token = header.removeprefix("Bearer ").strip()
         if token:
             with self.db.connect() as conn:
-                conn.execute("DELETE FROM sessions WHERE token_hash = ?", (hash_token(token),))
+                if self.db.use_postgres:
+                    cur = conn.cursor()
+                    cur.execute("DELETE FROM sessions WHERE token_hash = %s", (hash_token(token),))
+                    conn.commit()
+                else:
+                    conn.execute("DELETE FROM sessions WHERE token_hash = ?", (hash_token(token),))
         self.send_json({"ok": True})
 
     def clean_email(self, data: dict[str, Any]) -> str:
@@ -370,22 +497,43 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
         }
 
         with self.db.connect() as conn:
-            conn.execute("DELETE FROM password_reset_tokens WHERE expires_at < ?", (now_iso(),))
-            user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-            if user is None:
-                self.send_json(response)
-                return
+            if self.db.use_postgres:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM password_reset_tokens WHERE expires_at < %s", (now_iso(),))
+                cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+                user = cur.fetchone()
+                if user is None:
+                    self.send_json(response)
+                    return
 
-            user_id = int(user["id"])
-            conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
-            reset_token = secrets.token_urlsafe(32)
-            conn.execute(
-                """
-                INSERT INTO password_reset_tokens (token_hash, user_id, created_at, expires_at)
-                VALUES (?, ?, ?, ?)
-                """,
-                (hash_token(reset_token), user_id, now_iso(), add_hours(RESET_HOURS)),
-            )
+                user_id = int(user[0])
+                cur.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
+                reset_token = secrets.token_urlsafe(32)
+                cur.execute(
+                    """
+                    INSERT INTO password_reset_tokens (token_hash, user_id, created_at, expires_at)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (hash_token(reset_token), user_id, now_iso(), add_hours(RESET_HOURS)),
+                )
+                conn.commit()
+            else:
+                conn.execute("DELETE FROM password_reset_tokens WHERE expires_at < ?", (now_iso(),))
+                user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+                if user is None:
+                    self.send_json(response)
+                    return
+
+                user_id = int(user["id"])
+                conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+                reset_token = secrets.token_urlsafe(32)
+                conn.execute(
+                    """
+                    INSERT INTO password_reset_tokens (token_hash, user_id, created_at, expires_at)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (hash_token(reset_token), user_id, now_iso(), add_hours(RESET_HOURS)),
+                )
 
         response["resetCode"] = reset_token
         response["expiresInMinutes"] = RESET_HOURS * 60
@@ -402,28 +550,56 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
             raise ApiError(HTTPStatus.BAD_REQUEST, "Password must be at least 6 characters")
 
         with self.db.connect() as conn:
-            conn.execute("DELETE FROM password_reset_tokens WHERE expires_at < ?", (now_iso(),))
-            row = conn.execute(
-                """
-                SELECT user_id
-                FROM password_reset_tokens
-                WHERE token_hash = ? AND expires_at >= ?
-                """,
-                (hash_token(reset_token), now_iso()),
-            ).fetchone()
-            if row is None:
-                raise ApiError(HTTPStatus.BAD_REQUEST, "Invalid or expired reset code. Request a new one.")
+            if self.db.use_postgres:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM password_reset_tokens WHERE expires_at < %s", (now_iso(),))
+                cur.execute(
+                    """
+                    SELECT user_id
+                    FROM password_reset_tokens
+                    WHERE token_hash = %s AND expires_at >= %s
+                    """,
+                    (hash_token(reset_token), now_iso()),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise ApiError(HTTPStatus.BAD_REQUEST, "Invalid or expired reset code. Request a new one.")
 
-            user_id = int(row["user_id"])
-            password_hash, salt = hash_password(password)
-            conn.execute(
-                "UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?",
-                (password_hash, salt, user_id),
-            )
-            conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
-            conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
-            session_token = self.create_session(conn, user_id)
-            user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+                user_id = int(row[0])
+                password_hash, salt = hash_password(password)
+                cur.execute(
+                    "UPDATE users SET password_hash = %s, password_salt = %s WHERE id = %s",
+                    (password_hash, salt, user_id),
+                )
+                cur.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
+                cur.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
+                session_token = self.create_session(conn, user_id)
+                cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+                user = cur.fetchone()
+                conn.commit()
+            else:
+                conn.execute("DELETE FROM password_reset_tokens WHERE expires_at < ?", (now_iso(),))
+                row = conn.execute(
+                    """
+                    SELECT user_id
+                    FROM password_reset_tokens
+                    WHERE token_hash = ? AND expires_at >= ?
+                    """,
+                    (hash_token(reset_token), now_iso()),
+                ).fetchone()
+                if row is None:
+                    raise ApiError(HTTPStatus.BAD_REQUEST, "Invalid or expired reset code. Request a new one.")
+
+                user_id = int(row["user_id"])
+                password_hash, salt = hash_password(password)
+                conn.execute(
+                    "UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?",
+                    (password_hash, salt, user_id),
+                )
+                conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+                conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+                session_token = self.create_session(conn, user_id)
+                user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
 
         self.send_json({"user": user_payload(user), "token": session_token})
 
@@ -437,15 +613,29 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
     def handle_list_expenses(self) -> None:
         user = self.require_user()
         with self.db.connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT *
-                FROM expenses
-                WHERE user_id = ?
-                ORDER BY date DESC, created_at DESC
-                """,
-                (user["id"],),
-            ).fetchall()
+            if self.db.use_postgres:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM expenses
+                    WHERE user_id = %s
+                    ORDER BY date DESC, created_at DESC
+                    """,
+                    (user["id"],),
+                )
+                rows = cur.fetchall()
+                conn.commit()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT *
+                    FROM expenses
+                    WHERE user_id = ?
+                    ORDER BY date DESC, created_at DESC
+                    """,
+                    (user["id"],),
+                ).fetchall()
         self.send_json({"expenses": [expense_payload(row) for row in rows]})
 
     def clean_expense(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -488,31 +678,58 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
         timestamp = now_iso()
 
         with self.db.connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO expenses (
-                    id, user_id, description, amount, category, date, notes,
-                    ai_suggested, created_at, updated_at
+            if self.db.use_postgres:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute(
+                    """
+                    INSERT INTO expenses (
+                        id, user_id, description, amount, category, date, notes,
+                        ai_suggested, created_at, updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING *
+                    """,
+                    (
+                        expense_id,
+                        user["id"],
+                        expense["description"],
+                        expense["amount"],
+                        expense["category"],
+                        expense["date"],
+                        expense["notes"],
+                        expense["ai_suggested"],
+                        timestamp,
+                        timestamp,
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    expense_id,
-                    user["id"],
-                    expense["description"],
-                    expense["amount"],
-                    expense["category"],
-                    expense["date"],
-                    expense["notes"],
-                    expense["ai_suggested"],
-                    timestamp,
-                    timestamp,
-                ),
-            )
-            row = conn.execute(
-                "SELECT * FROM expenses WHERE id = ? AND user_id = ?",
-                (expense_id, user["id"]),
-            ).fetchone()
+                row = cur.fetchone()
+                conn.commit()
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO expenses (
+                        id, user_id, description, amount, category, date, notes,
+                        ai_suggested, created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        expense_id,
+                        user["id"],
+                        expense["description"],
+                        expense["amount"],
+                        expense["category"],
+                        expense["date"],
+                        expense["notes"],
+                        expense["ai_suggested"],
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                row = conn.execute(
+                    "SELECT * FROM expenses WHERE id = ? AND user_id = ?",
+                    (expense_id, user["id"]),
+                ).fetchone()
 
         self.send_json({"expense": expense_payload(row)}, HTTPStatus.CREATED)
 
@@ -521,43 +738,80 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
         expense = self.clean_expense(self.read_json())
 
         with self.db.connect() as conn:
-            cursor = conn.execute(
-                """
-                UPDATE expenses
-                SET description = ?, amount = ?, category = ?, date = ?, notes = ?,
-                    ai_suggested = ?, updated_at = ?
-                WHERE id = ? AND user_id = ?
-                """,
-                (
-                    expense["description"],
-                    expense["amount"],
-                    expense["category"],
-                    expense["date"],
-                    expense["notes"],
-                    expense["ai_suggested"],
-                    now_iso(),
-                    expense_id,
-                    user["id"],
-                ),
-            )
-            if cursor.rowcount == 0:
-                raise ApiError(HTTPStatus.NOT_FOUND, "Expense not found")
-            row = conn.execute(
-                "SELECT * FROM expenses WHERE id = ? AND user_id = ?",
-                (expense_id, user["id"]),
-            ).fetchone()
+            if self.db.use_postgres:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute(
+                    """
+                    UPDATE expenses
+                    SET description = %s, amount = %s, category = %s, date = %s, notes = %s,
+                        ai_suggested = %s, updated_at = %s
+                    WHERE id = %s AND user_id = %s
+                    RETURNING *
+                    """,
+                    (
+                        expense["description"],
+                        expense["amount"],
+                        expense["category"],
+                        expense["date"],
+                        expense["notes"],
+                        expense["ai_suggested"],
+                        now_iso(),
+                        expense_id,
+                        user["id"],
+                    ),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "Expense not found")
+                conn.commit()
+            else:
+                cursor = conn.execute(
+                    """
+                    UPDATE expenses
+                    SET description = ?, amount = ?, category = ?, date = ?, notes = ?,
+                        ai_suggested = ?, updated_at = ?
+                    WHERE id = ? AND user_id = ?
+                    """,
+                    (
+                        expense["description"],
+                        expense["amount"],
+                        expense["category"],
+                        expense["date"],
+                        expense["notes"],
+                        expense["ai_suggested"],
+                        now_iso(),
+                        expense_id,
+                        user["id"],
+                    ),
+                )
+                if cursor.rowcount == 0:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "Expense not found")
+                row = conn.execute(
+                    "SELECT * FROM expenses WHERE id = ? AND user_id = ?",
+                    (expense_id, user["id"]),
+                ).fetchone()
 
         self.send_json({"expense": expense_payload(row)})
 
     def handle_delete_expense(self, expense_id: str) -> None:
         user = self.require_user()
         with self.db.connect() as conn:
-            cursor = conn.execute(
-                "DELETE FROM expenses WHERE id = ? AND user_id = ?",
-                (expense_id, user["id"]),
-            )
-            if cursor.rowcount == 0:
-                raise ApiError(HTTPStatus.NOT_FOUND, "Expense not found")
+            if self.db.use_postgres:
+                cur = conn.cursor()
+                cur.execute(
+                    "DELETE FROM expenses WHERE id = %s AND user_id = %s",
+                    (expense_id, user["id"]),
+                )
+                if cur.rowcount == 0:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "Expense not found")
+                conn.commit()
+            else:
+                cursor = conn.execute(
+                    "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+                    (expense_id, user["id"]),
+                )
+                if cursor.rowcount == 0:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "Expense not found")
         self.send_json({"ok": True})
 
     def handle_static(self, path: str) -> None:
@@ -603,10 +857,41 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8787")))
     parser.add_argument(
+        "--use-postgres",
+        action="store_true",
+        help="Use PostgreSQL instead of SQLite",
+    )
+    parser.add_argument(
         "--db",
         type=Path,
         default=Path(os.environ.get("EXPENSEAI_DB_PATH", DEFAULT_DB)),
         help="Path to the SQLite database file",
+    )
+    parser.add_argument(
+        "--pg-host",
+        default=os.environ.get("PGHOST", "localhost"),
+        help="PostgreSQL host",
+    )
+    parser.add_argument(
+        "--pg-database",
+        default=os.environ.get("PGDATABASE", "expenseai"),
+        help="PostgreSQL database name",
+    )
+    parser.add_argument(
+        "--pg-user",
+        default=os.environ.get("PGUSER", "expenseai"),
+        help="PostgreSQL user",
+    )
+    parser.add_argument(
+        "--pg-password",
+        default=os.environ.get("PGPASSWORD", "expenseai_secure_password_2024"),
+        help="PostgreSQL password",
+    )
+    parser.add_argument(
+        "--pg-port",
+        type=int,
+        default=int(os.environ.get("PGPORT", "5432")),
+        help="PostgreSQL port",
     )
     parser.add_argument(
         "--static-dir",
@@ -619,11 +904,33 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    db = Database(args.db.resolve())
+    
+    # Override USE_POSTGRES if --use-postgres flag is provided
+    global USE_POSTGRES
+    if args.use_postgres and USE_POSTGRES:
+        USE_POSTGRES = True
+    elif args.use_postgres and not USE_POSTGRES:
+        print("Warning: --use-postgres flag provided but psycopg2 is not installed. Using SQLite instead.", flush=True)
+        USE_POSTGRES = False
+    
+    if USE_POSTGRES:
+        pg_config = {
+            'host': args.pg_host,
+            'database': args.pg_database,
+            'user': args.pg_user,
+            'password': args.pg_password,
+            'port': args.pg_port
+        }
+        db = Database(pg_config)
+        db_info = f"PostgreSQL: {pg_config['database']}@{pg_config['host']}:{pg_config['port']}"
+    else:
+        db = Database(args.db.resolve())
+        db_info = f"SQLite: {db.path}"
+    
     static_dir = args.static_dir.resolve() if args.static_dir else None
     server = ThreadingHTTPServer((args.host, args.port), create_handler(db, static_dir))
     print(f"ExpenseAI backend running at http://{args.host}:{args.port}", flush=True)
-    print(f"SQLite database: {db.path}", flush=True)
+    print(f"Database: {db_info}", flush=True)
     if static_dir:
         print(f"Serving frontend: {static_dir}", flush=True)
     try:

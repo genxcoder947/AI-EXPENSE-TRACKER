@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import {
   AlertCircle,
   Camera,
@@ -7,6 +8,8 @@ import {
   Loader2,
   ScanLine,
   X,
+  Check,
+  Edit,
 } from 'lucide-react';
 import { parseReceiptText } from '../utils/receiptParser';
 
@@ -85,6 +88,11 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [webcamOpen, setWebcamOpen] = useState(false);
   const [webcamStarting, setWebcamStarting] = useState(false);
+  const [scanResult, setScanResult] = useState<ReceiptScanResult | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [editDescription, setEditDescription] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editNotes, setEditNotes] = useState('');
 
   const hasWebApi =
     typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
@@ -152,14 +160,20 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
         const amountStr =
           parsed.amount !== null ? parsed.amount.toFixed(2) : '';
 
-        onScanComplete({
+        const result: ReceiptScanResult = {
           description: parsed.description,
           amount: amountStr,
           notes: parsed.notes,
           itemCount: parsed.itemCount,
           confidence: parsed.confidence,
           warnings: parsed.warnings,
-        });
+        };
+
+        setScanResult(result);
+        setEditDescription(parsed.description);
+        setEditAmount(amountStr);
+        setEditNotes(parsed.notes);
+        setShowReviewModal(true);
 
         setPhase('idle');
         setProgressLabel('');
@@ -281,6 +295,24 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
   const closeWebcam = () => {
     stopWebcamStream();
     setWebcamOpen(false);
+  };
+
+  const handleConfirmScan = () => {
+    if (scanResult) {
+      onScanComplete({
+        ...scanResult,
+        description: editDescription,
+        amount: editAmount,
+        notes: editNotes,
+      });
+    }
+    setShowReviewModal(false);
+    setScanResult(null);
+  };
+
+  const handleCancelReview = () => {
+    setShowReviewModal(false);
+    setScanResult(null);
   };
 
   /** Prefer browser webcam — works on computers; avoids DevTools “mobile” UA + broken desktop capture. */
@@ -479,6 +511,130 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 Capture & scan
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && scanResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="relative w-full max-w-2xl rounded-xl bg-white dark:bg-slate-800 p-6 shadow-xl text-slate-900 dark:text-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                  <Edit className="w-5 h-5 text-purple-500" />
+                  Review & Edit Scanned Receipt
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Verify and edit the extracted details before adding
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelReview}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white"
+                aria-label="Close review"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Confidence Indicator */}
+            <div className={`mb-4 p-3 rounded-lg ${
+              scanResult.confidence === 'high' 
+                ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' 
+                : scanResult.confidence === 'medium'
+                  ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                  : 'bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-medium ${
+                  scanResult.confidence === 'high' 
+                    ? 'text-emerald-700 dark:text-emerald-400' 
+                    : scanResult.confidence === 'medium'
+                      ? 'text-amber-700 dark:text-amber-400'
+                      : 'text-rose-700 dark:text-rose-400'
+                }`}>
+                  AI Confidence: {scanResult.confidence.toUpperCase()}
+                </span>
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  • {scanResult.itemCount} items detected
+                </span>
+              </div>
+              {scanResult.warnings.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {scanResult.warnings.map((warning, index) => (
+                    <p key={index} className="text-xs text-amber-700 dark:text-amber-400">
+                      ⚠️ {warning}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Editable Fields */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Description
+                </label>
+                <Input
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full"
+                  placeholder="Enter a brief description"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Amount (₹)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-full"
+                  placeholder="Enter amount"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Notes (Itemized Details)
+                </label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full min-h-[150px] px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Itemized list will appear here..."
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-6 flex flex-col-reverse sm:flex-row gap-3 justify-end">
+              <Button
+                type="button"
+                onClick={handleCancelReview}
+                className="bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmScan}
+                className="bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white"
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Confirm & Add Expense
               </Button>
             </div>
           </div>
