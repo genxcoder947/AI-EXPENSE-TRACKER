@@ -19,7 +19,7 @@ const WEAK_TOTAL_HINTS = /\btotal\b|payable|subtotal/i;
 const NEGATIVE_LINE_HINTS =
   /saved\s|you\s+saved|discount|cashback|delivery\s*fee|platform\s*fee|packaging|gst\s*breakup|tax\s*summary/i;
 const NON_ITEM_LINE_HINTS =
-  /total|subtotal|payable|paid|balance|change|discount|cashback|saved|tax|gst|cgst|sgst|igst|\bfee\b|\bcharge\b|delivery|platform|packaging|\btip\b|round\s*off|invoice|receipt|bill\s*no|order\s*id|order\s*no|token|date|time|phone|mobile|address|table|cashier|payment|upi|card|cash|wallet|thank\s*you|powered\s*by|fssai|store|shop|mall|center|road|street|city|state|pin|zip|email|website|gstin|vat/i;
+  /total|subtotal|payable|paid|balance|change|discount|cashback|saved|tax|gst|cgst|sgst|igst|\bfee\b|\bcharge\b|delivery|platform|packaging|\btip\b|round\s*off|invoice|receipt|bill\s*no|order\s*id|order\s*no|token|date|time|phone|mobile|address|table|cashier|payment|upi|card|cash|wallet|thank\s*you|powered\s*by|fssai|store|shop|mall|center|road|street|city|state|pin|zip|email|website|gstin|vat|building|shop|store|mall|center|centre|lane|avenue|boulevard|drive|court|place|way|circle|square|terrace|town|village|district|zone|area|sector|near|opposite|behind|beside|next\s+to|contact|customer|server|waiter|table\s*no|order\s*no|invoice\s*no|gstn|pan|aadhar|license|registration|authorized|registered|head\s*office|branch|franchise|outlet|location|landmark|gps|coordinates|map|directions|route|distance|travel|transport|vehicle|parking|entry|exit|gate|door|floor|lift|elevator|escalator|stair|wing|block|tower|phase|sector|plot|survey|number|no\.|num|h\.no|house|apartment|flat|room|suite|unit|complex|society|colony|nagar|nagar|pura|pura|ganj|ganj|market|bazaar|mandi|mandi|chowk|chowk|chauraha|chauraha|cross|junction|signal|traffic|police|hospital|school|college|university|bank|atm|office|factory|industry|warehouse|godown|depot|terminal|station|airport|railway|bus|metro|train|flight|taxi|cab|auto|rickshaw|bike|cycle|walk|pedestrian|footpath|sidewalk|pavement|bridge|flyover|underpass|tunnel|highway|expressway|freeway|motorway|roadway|streetway|lane|alley|bylane|gully|path|track|trail|route|way|pass|cut|bypass|ring\s*road|outer\s*ring|inner\s*ring|marg|marg|link|road|service\s*road|main\s*road|arterial\s*road|local\s*road|colony\s*road|sector\s*road|plot\s*road|industrial\s*area|commercial\s*area|residential\s*area|business\s*district|shopping\s*complex|multiplex|theater|cinema|mall|plaza|arcade|court|forum|hub|center|centre/i;
 const DATE_OR_TIME_HINTS =
   /\b(?:date|time|invoice|bill\s*no|order\s*id|order\s*no|token|phone|mobile|address|fssai)\b/i;
 const DATE_OR_TIME_VALUE =
@@ -180,6 +180,10 @@ function cleanItemName(raw: string): string {
     .replace(/\s+\d{1,2}\s*$/g, ' ')
     .replace(/^[\s*#.:;-]+|[\s*#.:;-]+$/g, '')
     .replace(/\s{2,}/g, ' ')
+    // Remove address-related words
+    .replace(/\b(?:street|road|lane|avenue|boulevard|drive|court|place|way|circle|square|terrace|building|shop|store|mall|center|centre|town|village|city|state|district|zone|area|sector|near|opposite|behind|beside|next\s+to)\b/gi, ' ')
+    .replace(/\b(?:phone|mobile|email|contact|address)\b/gi, ' ')
+    .replace(/\b(?:gstin|vat|tax|invoice|bill|order)\b/gi, ' ')
     .trim();
 }
 
@@ -215,6 +219,34 @@ function isLikelyItemName(name: string): boolean {
   if (!/[a-z]/i.test(name)) return false;
   if (NON_ITEM_LINE_HINTS.test(name)) return false;
   if (/^\d+(?:\.\d+)?$/.test(name)) return false;
+  
+  // Filter out address-like patterns
+  if (/^\d+[\s,]*[a-z]+/i.test(name) && /\d{6}$/.test(name)) return false; // PIN codes
+  if (/^\d+[\s,-]+[a-z]+[\s,-]+[a-z]+/i.test(name) && name.split(/[\s,-]+/).length >= 3) {
+    // Likely address: number + street name + city/state
+    return false;
+  }
+  
+  // Filter out phone number patterns
+  if (/^[\d+\-\(\)\s]{10,}$/.test(name)) return false;
+  if (/^\+?\d{1,3}[\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{4}$/.test(name)) return false;
+  
+  // Filter out email patterns
+  if (/@/.test(name)) return false;
+  
+  // Filter out URL patterns
+  if (/https?:\/\//i.test(name)) return false;
+  if (/www\./i.test(name)) return false;
+  
+  // Filter out GSTIN/PAN patterns (Indian tax IDs)
+  if (/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/i.test(name)) return false;
+  if (/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(name)) return false;
+  
+  // Filter out lines that are mostly numbers
+  const numberCount = (name.match(/\d/g) || []).length;
+  const letterCount = (name.match(/[a-z]/gi) || []).length;
+  if (numberCount > letterCount && numberCount > 3) return false;
+  
   return true;
 }
 
