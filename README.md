@@ -1,6 +1,6 @@
 # ExpenseAI
 
-ExpenseAI is a React + TypeScript expense tracker with a local backend and SQLite database.
+ExpenseAI is a React + TypeScript expense tracker with a local backend and PostgreSQL database.
 
 ## Run the Full App
 
