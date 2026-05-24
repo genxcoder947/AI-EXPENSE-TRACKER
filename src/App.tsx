@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Expense } from './types';
+import { Expense, Income } from './types';
 import { ExpenseForm } from './components/ExpenseForm';
 import { ExpenseList } from './components/ExpenseList';
+import { IncomeForm } from './components/IncomeForm';
+import { IncomeList } from './components/IncomeList';
+import { IncomeOverview } from './components/IncomeOverview';
 import { InsightsPanel } from './components/InsightsPanel';
 import { SpendingChart } from './components/SpendingChart';
 import { StatsOverview } from './components/StatsOverview';
@@ -20,6 +23,10 @@ import {
   deleteExpense,
   fetchCurrentUser,
   fetchExpenses,
+  fetchIncome,
+  createIncome,
+  deleteIncome,
+  updateIncome,
   getErrorMessage,
   hasStoredSession,
   login,
@@ -28,10 +35,11 @@ import {
   updateExpense,
 } from './lib/api';
 
-type View = 'dashboard' | 'add-expense' | 'history' | 'analytics' | 'insights' | 'settings';
+type View = 'dashboard' | 'add-expense' | 'add-income' | 'history' | 'income-history' | 'analytics' | 'insights' | 'settings';
 
 export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [income, setIncome] = useState<Income[]>([]);
   const [user, setUser] = useState<ApiUser | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [appError, setAppError] = useState<string | null>(null);
@@ -64,15 +72,18 @@ export default function App() {
       try {
         const currentUser = await fetchCurrentUser();
         const savedExpenses = await fetchExpenses();
+        const savedIncome = await fetchIncome();
         if (!cancelled) {
           setUser(currentUser);
           setExpenses(sortExpensesByDate(savedExpenses));
+          setIncome(savedIncome);
         }
       } catch (err) {
         clearStoredSession();
         if (!cancelled) {
           setUser(null);
           setExpenses([]);
+          setIncome([]);
           setAppError(getErrorMessage(err));
         }
       } finally {
@@ -97,10 +108,16 @@ export default function App() {
     setExpenses(sortExpensesByDate(savedExpenses));
   };
 
+  const loadUserIncome = async () => {
+    const savedIncome = await fetchIncome();
+    setIncome(savedIncome);
+  };
+
   const handleLogin = async (email: string, password: string) => {
     const session = await login(email, password);
     setUser(session.user);
     await loadUserExpenses();
+    await loadUserIncome();
     setAppError(null);
   };
 
@@ -108,6 +125,7 @@ export default function App() {
     const session = await register(email, password);
     setUser(session.user);
     await loadUserExpenses();
+    await loadUserIncome();
     setAppError(null);
   };
 
@@ -115,6 +133,7 @@ export default function App() {
     await logout();
     setUser(null);
     setExpenses([]);
+    setIncome([]);
   };
 
   const handleAddExpense = async (expense: Expense) => {
@@ -127,6 +146,27 @@ export default function App() {
       aiSuggested: expense.aiSuggested,
     });
     setExpenses(prev => sortExpensesByDate([savedExpense, ...prev]));
+  };
+
+  const handleAddIncome = async (income: Income) => {
+    const savedIncome = await createIncome({
+      description: income.description,
+      amount: income.amount,
+      category: income.category,
+      date: income.date,
+      notes: income.notes,
+    });
+    setIncome(prev => [savedIncome, ...prev]);
+  };
+
+  const handleUpdateIncome = async (income: Income) => {
+    const updatedIncome = await updateIncome(income);
+    setIncome(prev => prev.map(inc => inc.id === updatedIncome.id ? updatedIncome : inc));
+  };
+
+  const handleDeleteIncome = async (id: string) => {
+    await deleteIncome(id);
+    setIncome(prev => prev.filter(inc => inc.id !== id));
   };
 
   const handleDeleteExpense = async (id: string) => {
@@ -174,8 +214,10 @@ export default function App() {
           onPasswordReset={async () => {
             const currentUser = await fetchCurrentUser();
             const savedExpenses = await fetchExpenses();
+            const savedIncome = await fetchIncome();
             setUser(currentUser);
             setExpenses(sortExpensesByDate(savedExpenses));
+            setIncome(savedIncome);
             setAppError(null);
           }}
         />
@@ -233,6 +275,11 @@ export default function App() {
                 <StatsOverview expenses={expenses} />
               </div>
 
+              {/* Income Overview */}
+              <div className="mb-8">
+                <IncomeOverview income={income} />
+              </div>
+
               {/* Main Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column */}
@@ -262,6 +309,13 @@ export default function App() {
             </div>
           )}
 
+          {currentView === 'add-income' && (
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Add New Income</h2>
+              <IncomeForm onAddIncome={handleAddIncome} />
+            </div>
+          )}
+
           {currentView === 'history' && (
             <div>
               <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Expense History</h2>
@@ -269,6 +323,18 @@ export default function App() {
                 expenses={expenses}
                 onDeleteExpense={handleDeleteExpense}
                 onUpdateExpense={handleUpdateExpense}
+              />
+            </div>
+          )}
+
+          {currentView === 'income-history' && (
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Income History</h2>
+              <IncomeList
+                income={income}
+                onDeleteIncome={handleDeleteIncome}
+                onUpdateIncome={handleUpdateIncome}
+                isDarkMode={darkMode}
               />
             </div>
           )}
@@ -319,7 +385,7 @@ export default function App() {
         </main>
 
         {/* AI Chatbot */}
-        <AIChatbot />
+        <AIChatbot expenses={expenses} income={income} />
       </div>
     </div>
   );

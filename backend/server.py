@@ -154,6 +154,17 @@ def expense_payload(row: Any) -> dict[str, Any]:
     }
 
 
+def income_payload(row: Any) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "description": row["description"],
+        "amount": float(row["amount"]),
+        "category": row["category"],
+        "date": row["date"],
+        "notes": row["notes"] or None,
+    }
+
+
 class ApiError(Exception):
     def __init__(self, status: int, message: str):
         super().__init__(message)
@@ -230,8 +241,26 @@ class Database:
                     );
                 """)
                 cur.execute("""
+                    CREATE TABLE IF NOT EXISTS income (
+                        id TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        description TEXT NOT NULL,
+                        amount REAL NOT NULL,
+                        category TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        notes TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
+                """)
+                cur.execute("""
                     CREATE INDEX IF NOT EXISTS idx_expenses_user_date
                         ON expenses(user_id, date DESC, created_at DESC);
+                """)
+                cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_income_user_date
+                        ON income(user_id, date DESC, created_at DESC);
                 """)
                 conn.commit()
         else:
@@ -277,8 +306,23 @@ class Database:
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                     );
 
+                    CREATE TABLE IF NOT EXISTS income (
+                        id TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        description TEXT NOT NULL,
+                        amount REAL NOT NULL,
+                        category TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        notes TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
+
                     CREATE INDEX IF NOT EXISTS idx_expenses_user_date
                         ON expenses(user_id, date DESC, created_at DESC);
+                    CREATE INDEX IF NOT EXISTS idx_income_user_date
+                        ON income(user_id, date DESC, created_at DESC);
                     """
                 )
 
@@ -467,6 +511,24 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                 return
             if self.command == "DELETE":
                 self.handle_delete_expense(expense_id)
+                return
+
+        if path == "/api/income":
+            if self.command == "GET":
+                self.handle_list_income()
+                return
+            if self.command == "POST":
+                self.handle_create_income()
+                return
+
+        match = re.fullmatch(r"/api/income/([^/]+)", path)
+        if match:
+            income_id = unquote(match.group(1))
+            if self.command == "PUT":
+                self.handle_update_income(income_id)
+                return
+            if self.command == "DELETE":
+                self.handle_delete_income(income_id)
                 return
 
         raise ApiError(HTTPStatus.NOT_FOUND, "API route not found")
@@ -888,6 +950,204 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                 )
                 if cursor.rowcount == 0:
                     raise ApiError(HTTPStatus.NOT_FOUND, "Expense not found")
+        self.send_json({"ok": True})
+
+    def handle_list_income(self) -> None:
+        user = self.require_user()
+        with self.db.connect() as conn:
+            if self.db.use_postgres:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM income
+                    WHERE user_id = %s
+                    ORDER BY date DESC, created_at DESC
+                    """,
+                    (user["id"],),
+                )
+                rows = cur.fetchall()
+                conn.commit()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT *
+                    FROM income
+                    WHERE user_id = ?
+                    ORDER BY date DESC, created_at DESC
+                    """,
+                    (user["id"],),
+                ).fetchall()
+        self.send_json({"income": [income_payload(row) for row in rows]})
+
+    def clean_income(self, data: dict[str, Any]) -> dict[str, Any]:
+        description = str(data.get("description", "")).strip()
+        category = str(data.get("category", "")).strip() or "Other"
+        date = str(data.get("date", "")).strip()
+        notes_value = data.get("notes")
+        notes = str(notes_value).strip() if notes_value not in (None, "") else None
+
+        try:
+            amount = float(data.get("amount"))
+        except (TypeError, ValueError):
+            raise ApiError(HTTPStatus.BAD_REQUEST, "Amount must be a valid number")
+
+        if not description:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "Description is required")
+        if amount <= 0:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "Amount must be greater than zero")
+        if not DATE_RE.match(date):
+            raise ApiError(HTTPStatus.BAD_REQUEST, "Date must use YYYY-MM-DD format")
+        if len(category) > 80:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "Category is too long")
+        if notes is not None and len(notes) > 700:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "Notes must be 700 characters or fewer")
+
+        return {
+            "description": description,
+            "amount": amount,
+            "category": category,
+            "date": date,
+            "notes": notes,
+        }
+
+    def handle_create_income(self) -> None:
+        user = self.require_user()
+        income = self.clean_income(self.read_json())
+        income_id = uuid.uuid4().hex
+        timestamp = now_iso()
+
+        with self.db.connect() as conn:
+            if self.db.use_postgres:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute(
+                    """
+                    INSERT INTO income (
+                        id, user_id, description, amount, category, date, notes,
+                        created_at, updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING *
+                    """,
+                    (
+                        income_id,
+                        user["id"],
+                        income["description"],
+                        income["amount"],
+                        income["category"],
+                        income["date"],
+                        income["notes"],
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                row = cur.fetchone()
+                conn.commit()
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO income (
+                        id, user_id, description, amount, category, date, notes,
+                        created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        income_id,
+                        user["id"],
+                        income["description"],
+                        income["amount"],
+                        income["category"],
+                        income["date"],
+                        income["notes"],
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                row = conn.execute(
+                    "SELECT * FROM income WHERE id = ? AND user_id = ?",
+                    (income_id, user["id"]),
+                ).fetchone()
+
+        self.send_json({"income": income_payload(row)})
+
+    def handle_update_income(self, income_id: str) -> None:
+        user = self.require_user()
+        income = self.clean_income(self.read_json())
+
+        with self.db.connect() as conn:
+            if self.db.use_postgres:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute(
+                    """
+                    UPDATE income
+                    SET description = %s, amount = %s, category = %s, date = %s, notes = %s,
+                        updated_at = %s
+                    WHERE id = %s AND user_id = %s
+                    RETURNING *
+                    """,
+                    (
+                        income["description"],
+                        income["amount"],
+                        income["category"],
+                        income["date"],
+                        income["notes"],
+                        now_iso(),
+                        income_id,
+                        user["id"],
+                    ),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "Income not found")
+                conn.commit()
+            else:
+                cursor = conn.execute(
+                    """
+                    UPDATE income
+                    SET description = ?, amount = ?, category = ?, date = ?, notes = ?,
+                        updated_at = ?
+                    WHERE id = ? AND user_id = ?
+                    """,
+                    (
+                        income["description"],
+                        income["amount"],
+                        income["category"],
+                        income["date"],
+                        income["notes"],
+                        now_iso(),
+                        income_id,
+                        user["id"],
+                    ),
+                )
+                if cursor.rowcount == 0:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "Income not found")
+                row = conn.execute(
+                    "SELECT * FROM income WHERE id = ? AND user_id = ?",
+                    (income_id, user["id"]),
+                ).fetchone()
+
+        self.send_json({"income": income_payload(row)})
+
+    def handle_delete_income(self, income_id: str) -> None:
+        user = self.require_user()
+        with self.db.connect() as conn:
+            if self.db.use_postgres:
+                cur = conn.cursor()
+                cur.execute(
+                    "DELETE FROM income WHERE id = %s AND user_id = %s",
+                    (income_id, user["id"]),
+                )
+                if cur.rowcount == 0:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "Income not found")
+                conn.commit()
+            else:
+                cursor = conn.execute(
+                    "DELETE FROM income WHERE id = ? AND user_id = ?",
+                    (income_id, user["id"]),
+                )
+                if cursor.rowcount == 0:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "Income not found")
         self.send_json({"ok": True})
 
     def handle_static(self, path: str) -> None:

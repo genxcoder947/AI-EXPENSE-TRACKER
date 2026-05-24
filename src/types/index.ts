@@ -8,6 +8,15 @@ export interface Expense {
   aiSuggested: boolean;
 }
 
+export interface Income {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  date: string;
+  notes?: string;
+}
+
 export interface AiSuggestion {
   category: string;
   confidence: number;

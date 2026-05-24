@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User, ThumbsUp, ThumbsDown, Copy, Sparkles, Lightbulb, TrendingUp, AlertCircle, Clock, ChevronDown, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { Expense, Income } from '../types';
 
 // Type declarations for Web Speech API
 declare global {
@@ -18,82 +19,569 @@ type Message = {
   helpful?: boolean;
 };
 
-const guidanceResponses: Record<string, { response: string; quickActions?: string[] }> = {
-  'hello': {
-    response: 'Hi! 👋 I\'m your ExpenseAI assistant. I can help you with:\n\n• Adding and managing expenses\n• Understanding your spending patterns\n• Using the AI features\n• Navigating the dashboard\n• Setting budgets and goals\n• Analyzing financial health\n\nWhat would you like help with?',
-    quickActions: ['How to add expense', 'View my insights', 'Set a budget']
-  },
-  'hi': {
-    response: 'Hello! 👋 Welcome to ExpenseAI! How can I help you today?',
-    quickActions: ['Add expense', 'View spending', 'Get tips']
-  },
-  'help': {
-    response: 'I can help you with:\n\n📊 **Dashboard** - View your expenses and insights\n➕ **Add Expense** - Use the form to add new expenses\n📈 **Charts** - Visualize your spending by category\n💡 **AI Insights** - Get smart suggestions about your spending\n🎯 **Budget** - Set and track spending limits\n📊 **Analytics** - Advanced spending analysis\n\nWhat would you like to know more about?',
-    quickActions: ['Add expense', 'View insights', 'Set budget', 'Analyze spending']
-  },
-  'add expense': {
-    response: 'To add an expense:\n\n1. Fill in the description (e.g., "Lunch at cafe")\n2. Enter the amount\n3. Select or type a category\n4. Choose the date\n5. Click "Add Expense"\n\n💡 The AI will automatically suggest categories based on your description! Try using natural language like "bread and omelette for breakfast" for better categorization.',
-    quickActions: ['What categories exist?', 'How to edit expense', 'Delete expense']
-  },
-  'category': {
-    response: 'Categories help organize your spending. Available categories include:\n\n🍽️ **Food & Dining** - Restaurants, groceries, meals\n🚗 **Transportation** - Uber, petrol, parking\n🛍️ **Shopping** - Amazon, clothes, electronics\n🎬 **Entertainment** - Netflix, movies, subscriptions\n💡 **Bills & Utilities** - Electricity, internet, phone\n🏥 **Healthcare** - Medicine, doctor visits\n📚 **Education** - Courses, books, tuition\n✈️ **Travel** - Hotels, flights, trips\n📦 **Other** - Everything else\n\nYou can create custom categories by typing them in the category field!',
-    quickActions: ['How to add custom category', 'View category breakdown', 'Most used categories']
-  },
-  'insights': {
-    response: 'The AI Insights panel provides advanced analytics:\n\n📈 **Spending Velocity** - Daily average and monthly projections\n🎯 **Category Analysis** - Top spending categories and concentration\n🔍 **Anomaly Detection** - Unusual spending patterns\n📊 **Trend Analysis** - Week-over-week spending changes\n💡 **Smart Recommendations** - Personalized savings tips\n🏥 **Financial Health Score** - Overall financial wellness (0-100)\n\nThe AI analyzes your spending patterns in real-time to provide actionable insights!',
-    quickActions: ['Improve financial health', 'Reduce spending', 'Set budget goals']
-  },
-  'delete': {
-    response: 'To delete an expense:\n\n1. Find the expense in your list\n2. Click the delete button (trash icon)\n3. Confirm the deletion\n\n⚠️ This action cannot be undone! The expense will be permanently removed from your records.\n\n💡 Consider archiving important expenses instead of deleting them for tax purposes.',
-    quickActions: ['How to edit instead', 'View deleted items', 'Backup data']
-  },
-  'edit': {
-    response: 'To edit an expense:\n\n1. Find the expense in your list\n2. Click the edit button (pencil icon)\n3. Modify the description, amount, category, date, or notes\n4. Click "Save changes"\n\n💡 You can also add notes to expenses for better tracking and future reference.',
-    quickActions: ['Change category', 'Add notes', 'Edit multiple']
-  },
-  'chart': {
-    response: 'The spending charts provide visual analytics:\n\n📊 **Spending Chart** - Bar chart showing expenses by category\n🥧 **Category Pie Chart** - Visual breakdown of spending percentages\n\nThese charts help you:\n• Identify spending patterns\n• Spot budget overruns\n• Compare category performance\n• Make informed financial decisions\n\nHover over chart elements for detailed information!',
-    quickActions: ['View pie chart', 'Compare months', 'Export chart data']
-  },
-  'budget': {
-    response: 'Budgeting features in ExpenseAI:\n\n🎯 **AI-Recommended Budget** - Based on your spending patterns\n📊 **Category Budgets** - Set limits per spending category\n⚠️ **Budget Alerts** - Get notified when approaching limits\n📈 **Progress Tracking** - Visual budget vs actual spending\n\n💡 The AI analyzes your spending velocity to recommend optimal budget levels with a 10% savings buffer.',
-    quickActions: ['Set monthly budget', 'Category budgets', 'Budget alerts']
-  },
-  'tips': {
-    response: '💡 Smart money-saving tips:\n\n🍳 **Food & Dining**: Meal prep can save 30-40% on food costs\n🚗 **Transportation**: Carpool or use public transit to save 15%\n🎬 **Entertainment**: Audit subscriptions regularly\n🛍️ **Shopping**: Use the 24-hour rule for impulse purchases\n💡 **Bills**: Set up autopay to avoid late fees\n🏥 **Healthcare**: Use preventive care to avoid bigger costs\n\nWould you like specific tips for any category?',
-    quickActions: ['Food savings tips', 'Reduce entertainment costs', 'Transportation savings']
-  },
-  'export': {
-    response: 'Data export options:\n\n📊 **Current View**: All expenses are stored locally in your browser\n💾 **Backup**: Your data persists in the application\n📱 **Cross-device**: Currently single-device focused\n\nFuture updates may include:\n• CSV export\n• PDF reports\n• Cloud sync\n• Multi-device access',
-    quickActions: ['Backup my data', 'Export to CSV', 'Sync across devices']
-  },
-  'ai': {
-    response: 'ExpenseAI uses advanced AI for:\n\n🧠 **Smart Categorization** - Auto-categorizes expenses using NLP and fuzzy matching\n📊 **Predictive Analytics** - Projects monthly spending based on velocity\n🔍 **Anomaly Detection** - Identifies unusual spending patterns\n💡 **Personalized Insights** - Tailored recommendations based on your habits\n🎯 **Budget Optimization** - AI-recommended budget levels\n🏥 **Financial Health** - Comprehensive wellness scoring\n\nThe AI learns from your spending patterns to provide increasingly accurate and personalized insights!',
-    quickActions: ['How AI works', 'Improve accuracy', 'AI features']
-  },
-  'security': {
-    response: '🔒 Security & Privacy:\n\n• All data stored locally on your device\n• No cloud data transmission\n• No third-party data sharing\n• Your financial data stays private\n• Encrypted local storage\n\n💡 Your data never leaves your device, ensuring maximum privacy and security.',
-    quickActions: ['Data privacy', 'Local storage', 'Encryption details']
-  },
-  'troubleshoot': {
-    response: 'Common issues and solutions:\n\n❌ **App not loading**: Refresh the page or restart the app\n❌ **Data not saving**: Check browser storage permissions\n❌ **AI not categorizing**: Try more descriptive expense descriptions\n❌ **Charts not showing**: Ensure you have expenses added\n❌ **Sync issues**: Currently single-device focused\n\nNeed more help? Contact support for assistance.',
-    quickActions: ['Contact support', 'Report bug', 'Reset app data']
-  },
-  'default': {
-    response: 'I\'m here to help you with ExpenseAI! You can ask me about:\n\n• Adding and managing expenses\n• Categories and organization\n• AI insights and analytics\n• Budgeting and goals\n• Charts and visualization\n• Security and privacy\n• Troubleshooting\n\nTry asking "How do I add an expense?" or "Show me my spending insights"',
-    quickActions: ['Add expense', 'View insights', 'Set budget', 'Get tips']
-  }
-};
+interface AIChatbotProps {
+  expenses?: Expense[];
+  income?: Income[];
+}
 
-export default function AIChatbot() {
+// Advanced local AI with pattern matching and context awareness
+class LocalAI {
+  private conversationHistory: string[] = [];
+  private financialContext: { expenses: Expense[]; income: Income[] } = { expenses: [], income: [] };
+
+  constructor(expenses?: Expense[], income?: Income[]) {
+    if (expenses) this.financialContext.expenses = expenses;
+    if (income) this.financialContext.income = income;
+  }
+
+  updateContext(expenses: Expense[], income: Income[]) {
+    this.financialContext.expenses = expenses;
+    this.financialContext.income = income;
+  }
+
+  addToHistory(message: string) {
+    this.conversationHistory.push(message);
+    if (this.conversationHistory.length > 10) {
+      this.conversationHistory.shift();
+    }
+  }
+
+  private fuzzyMatch(input: string, patterns: string[]): boolean {
+    const lowerInput = input.toLowerCase();
+    return patterns.some(pattern => {
+      const lowerPattern = pattern.toLowerCase();
+      return lowerInput.includes(lowerPattern) || lowerPattern.includes(lowerInput);
+    });
+  }
+
+  private extractNumbers(text: string): number[] {
+    const matches = text.match(/-?\d+\.?\d*/g);
+    return matches ? matches.map(Number) : [];
+  }
+
+  private extractDate(text: string): Date | null {
+    const now = new Date();
+    
+    if (/today/i.test(text)) return now;
+    if (/yesterday/i.test(text)) {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return yesterday;
+    }
+    if (/this month/i.test(text)) return now;
+    if (/last month/i.test(text)) {
+      const lastMonth = new Date(now);
+      lastMonth.setMonth(lastMonth.getMonth() - 1);
+      return lastMonth;
+    }
+    
+    return null;
+  }
+
+  private getFinancialInsights(): string {
+    const { expenses, income } = this.financialContext;
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
+    const netSavings = totalIncome - totalExpenses;
+    const savingsRate = totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : '0';
+
+    let insights = `📊 **Financial Overview**\n\n`;
+    insights += `• Total Income: ₹${totalIncome.toFixed(2)}\n`;
+    insights += `• Total Expenses: ₹${totalExpenses.toFixed(2)}\n`;
+    insights += `• Net Savings: ₹${netSavings.toFixed(2)} (${savingsRate}%)\n`;
+    insights += `• Total Transactions: ${expenses.length + income.length}\n\n`;
+
+    if (expenses.length > 0) {
+      const categoryTotals = new Map<string, number>();
+      expenses.forEach(e => {
+        categoryTotals.set(e.category, (categoryTotals.get(e.category) || 0) + e.amount);
+      });
+      
+      const topCategory = Array.from(categoryTotals.entries()).sort((a, b) => b[1] - a[1])[0];
+      insights += `� **Top Spending Category**: ${topCategory[0]} (₹${topCategory[1].toFixed(2)})\n`;
+    }
+
+    if (income.length > 0) {
+      const incomeCategories = new Map<string, number>();
+      income.forEach(i => {
+        incomeCategories.set(i.category, (incomeCategories.get(i.category) || 0) + i.amount);
+      });
+      
+      const topIncome = Array.from(incomeCategories.entries()).sort((a, b) => b[1] - a[1])[0];
+      insights += `� **Top Income Source**: ${topIncome[0]} (₹${topIncome[1].toFixed(2)})\n`;
+    }
+
+    return insights;
+  }
+
+  private getTransactionHistory(type: 'all' | 'expenses' | 'income', limit: number = 10): string {
+    const { expenses, income } = this.financialContext;
+    
+    let transactions: Array<{ type: string; description: string; amount: number; category: string; date: string }> = [];
+    
+    if (type === 'all' || type === 'expenses') {
+      transactions.push(...expenses.map(e => ({
+        type: 'expense',
+        description: e.description,
+        amount: e.amount,
+        category: e.category,
+        date: e.date
+      })));
+    }
+    
+    if (type === 'all' || type === 'income') {
+      transactions.push(...income.map(i => ({
+        type: 'income',
+        description: i.description,
+        amount: i.amount,
+        category: i.category,
+        date: i.date
+      })));
+    }
+    
+    // Sort by date (most recent first)
+    transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Limit results
+    transactions = transactions.slice(0, limit);
+    
+    if (transactions.length === 0) {
+      return `No ${type === 'all' ? 'transactions' : type} found. Start adding some to see your history!`;
+    }
+    
+    let history = `📜 **Transaction History** (${type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)})\n\n`;
+    
+    transactions.forEach((t, index) => {
+      const icon = t.type === 'income' ? '💰' : '💸';
+      const sign = t.type === 'income' ? '+' : '-';
+      history += `${index + 1}. ${icon} ${t.description}\n`;
+      history += `   ${sign}₹${t.amount.toFixed(2)} • ${t.category} • ${t.date}\n\n`;
+    });
+    
+    if (transactions.length >= limit) {
+      history += `Showing ${limit} most recent transactions. Ask for more if needed!`;
+    }
+    
+    return history;
+  }
+
+  private getRecentTransactions(days: number = 7): string {
+    const { expenses, income } = this.financialContext;
+    const now = new Date();
+    const cutoffDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    
+    let transactions: Array<{ type: string; description: string; amount: number; category: string; date: string }> = [];
+    
+    expenses.forEach(e => {
+      if (new Date(e.date) >= cutoffDate) {
+        transactions.push({
+          type: 'expense',
+          description: e.description,
+          amount: e.amount,
+          category: e.category,
+          date: e.date
+        });
+      }
+    });
+    
+    income.forEach(i => {
+      if (new Date(i.date) >= cutoffDate) {
+        transactions.push({
+          type: 'income',
+          description: i.description,
+          amount: i.amount,
+          category: i.category,
+          date: i.date
+        });
+      }
+    });
+    
+    // Sort by date (most recent first)
+    transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    if (transactions.length === 0) {
+      return `No transactions in the last ${days} days.`;
+    }
+    
+    let history = `📅 **Last ${days} Days**\n\n`;
+    
+    transactions.forEach((t, index) => {
+      const icon = t.type === 'income' ? '💰' : '💸';
+      const sign = t.type === 'income' ? '+' : '-';
+      history += `${index + 1}. ${icon} ${t.description}\n`;
+      history += `   ${sign}₹${t.amount.toFixed(2)} • ${t.category} • ${t.date}\n\n`;
+    });
+    
+    return history;
+  }
+
+  private getComprehensiveFinancialAnalysis(): string {
+    const { expenses, income } = this.financialContext;
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
+    const netSavings = totalIncome - totalExpenses;
+    const savingsRate = totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : '0';
+
+    let analysis = `📊 **COMPREHENSIVE FINANCIAL ANALYSIS**\n\n`;
+    
+    // Income Details
+    analysis += `💰 **INCOME BREAKDOWN**\n`;
+    analysis += `• Total Income: ₹${totalIncome.toFixed(2)}\n`;
+    analysis += `• Income Entries: ${income.length}\n`;
+    if (income.length > 0) {
+      const avgIncome = totalIncome / income.length;
+      const sortedIncome = [...income].sort((a, b) => b.amount - a.amount);
+      const maxIncome = sortedIncome[0]?.amount || 0;
+      const minIncome = sortedIncome[sortedIncome.length - 1]?.amount || 0;
+      const incomeRange = maxIncome - minIncome;
+      
+      analysis += `• Average Income: ₹${avgIncome.toFixed(2)}\n`;
+      analysis += `• Highest Income: ₹${maxIncome.toFixed(2)}\n`;
+      analysis += `• Lowest Income: ₹${minIncome.toFixed(2)}\n`;
+      analysis += `• Income Range: ₹${incomeRange.toFixed(2)}\n`;
+      
+      const incomeCategories = new Map<string, number>();
+      income.forEach(i => {
+        incomeCategories.set(i.category, (incomeCategories.get(i.category) || 0) + i.amount);
+      });
+      
+      const sortedIncomeCategories = Array.from(incomeCategories.entries()).sort((a, b) => b[1] - a[1]);
+      analysis += `• Income Sources: ${sortedIncomeCategories.length} categories\n`;
+      sortedIncomeCategories.forEach((cat, index) => {
+        const percentage = totalIncome > 0 ? ((cat[1] / totalIncome) * 100).toFixed(1) : '0';
+        analysis += `  ${index + 1}. ${cat[0]}: ₹${cat[1].toFixed(2)} (${percentage}%)\n`;
+      });
+    }
+    analysis += `\n`;
+    
+    // Expense Details
+    analysis += `💸 **EXPENSE BREAKDOWN**\n`;
+    analysis += `• Total Expenses: ₹${totalExpenses.toFixed(2)}\n`;
+    analysis += `• Expense Entries: ${expenses.length}\n`;
+    if (expenses.length > 0) {
+      const avgExpense = totalExpenses / expenses.length;
+      const sortedExpenses = [...expenses].sort((a, b) => b.amount - a.amount);
+      const maxExpense = sortedExpenses[0]?.amount || 0;
+      const minExpense = sortedExpenses[sortedExpenses.length - 1]?.amount || 0;
+      const expenseRange = maxExpense - minExpense;
+      
+      analysis += `• Average Expense: ₹${avgExpense.toFixed(2)}\n`;
+      analysis += `• Highest Expense: ₹${maxExpense.toFixed(2)}\n`;
+      analysis += `• Lowest Expense: ₹${minExpense.toFixed(2)}\n`;
+      analysis += `• Expense Range: ₹${expenseRange.toFixed(2)}\n`;
+      
+      const categoryTotals = new Map<string, number>();
+      expenses.forEach(e => {
+        categoryTotals.set(e.category, (categoryTotals.get(e.category) || 0) + e.amount);
+      });
+      
+      const sortedCategories = Array.from(categoryTotals.entries()).sort((a, b) => b[1] - a[1]);
+      analysis += `• Spending Categories: ${sortedCategories.length} categories\n`;
+      sortedCategories.forEach((cat, index) => {
+        const percentage = totalExpenses > 0 ? ((cat[1] / totalExpenses) * 100).toFixed(1) : '0';
+        analysis += `  ${index + 1}. ${cat[0]}: ₹${cat[1].toFixed(2)} (${percentage}%)\n`;
+      });
+    }
+    analysis += `\n`;
+    
+    // Savings Details
+    analysis += `💎 **SAVINGS ANALYSIS**\n`;
+    analysis += `• Net Savings: ₹${netSavings.toFixed(2)}\n`;
+    analysis += `• Savings Rate: ${savingsRate}%\n`;
+    if (totalIncome > 0) {
+      const recommendedSavings = totalIncome * 0.2;
+      const emergencyFund = totalExpenses * 6;
+      analysis += `• Recommended Savings (20%): ₹${recommendedSavings.toFixed(2)}\n`;
+      analysis += `• Emergency Fund (6 months expenses): ₹${emergencyFund.toFixed(2)}\n`;
+      if (netSavings >= recommendedSavings) {
+        analysis += `• Status: ✅ Exceeding recommended savings\n`;
+      } else if (netSavings > 0) {
+        analysis += `• Status: ⚠️ Below recommended savings by ₹${(recommendedSavings - netSavings).toFixed(2)}\n`;
+      } else {
+        analysis += `• Status: ❌ Negative savings (spending more than earning)\n`;
+      }
+    }
+    analysis += `\n`;
+    
+    // Transaction Summary
+    analysis += `📋 **TRANSACTION SUMMARY**\n`;
+    analysis += `• Total Transactions: ${expenses.length + income.length}\n`;
+    analysis += `• Income Transactions: ${income.length}\n`;
+    analysis += `• Expense Transactions: ${expenses.length}\n`;
+    analysis += `• Transaction Ratio: ${income.length > 0 ? (expenses.length / income.length).toFixed(2) : 'N/A'} expenses per income\n`;
+    
+    // Time-based analysis
+    if (expenses.length > 0 || income.length > 0) {
+      const allDates = [...expenses.map(e => new Date(e.date)), ...income.map(i => new Date(i.date))];
+      const oldestDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+      const newestDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+      const daysDiff = Math.ceil((newestDate.getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      analysis += `\n📅 **TIME ANALYSIS**\n`;
+      analysis += `• Date Range: ${oldestDate.toLocaleDateString()} to ${newestDate.toLocaleDateString()}\n`;
+      analysis += `• Tracking Period: ${daysDiff} days\n`;
+      
+      if (daysDiff > 0) {
+        const dailyAvgExpense = totalExpenses / daysDiff;
+        const dailyAvgIncome = totalIncome / daysDiff;
+        const weeklyAvgExpense = dailyAvgExpense * 7;
+        const weeklyAvgIncome = dailyAvgIncome * 7;
+        const monthlyProjectedExpense = dailyAvgExpense * 30;
+        const monthlyProjectedIncome = dailyAvgIncome * 30;
+        const yearlyProjectedExpense = dailyAvgExpense * 365;
+        const yearlyProjectedIncome = dailyAvgIncome * 365;
+        
+        analysis += `• Daily Average Expense: ₹${dailyAvgExpense.toFixed(2)}\n`;
+        analysis += `• Daily Average Income: ₹${dailyAvgIncome.toFixed(2)}\n`;
+        analysis += `• Weekly Average Expense: ₹${weeklyAvgExpense.toFixed(2)}\n`;
+        analysis += `• Weekly Average Income: ₹${weeklyAvgIncome.toFixed(2)}\n`;
+        analysis += `• Monthly Projected Expense: ₹${monthlyProjectedExpense.toFixed(2)}\n`;
+        analysis += `• Monthly Projected Income: ₹${monthlyProjectedIncome.toFixed(2)}\n`;
+        analysis += `• Yearly Projected Expense: ₹${yearlyProjectedExpense.toFixed(2)}\n`;
+        analysis += `• Yearly Projected Income: ₹${yearlyProjectedIncome.toFixed(2)}\n`;
+        
+        const monthlyNetSavings = monthlyProjectedIncome - monthlyProjectedExpense;
+        const yearlyNetSavings = yearlyProjectedIncome - yearlyProjectedExpense;
+        analysis += `• Monthly Projected Savings: ₹${monthlyNetSavings.toFixed(2)}\n`;
+        analysis += `• Yearly Projected Savings: ₹${yearlyNetSavings.toFixed(2)}\n`;
+      }
+    }
+
+    // Financial Health Score
+    analysis += `\n🏥 **FINANCIAL HEALTH SCORE**\n`;
+    let healthScore = 0;
+    const maxScore = 100;
+    const savingsRateNum = parseFloat(savingsRate);
+    
+    if (income.length > 0) healthScore += 20;
+    if (expenses.length > 0) healthScore += 20;
+    if (savingsRateNum >= 20) healthScore += 30;
+    else if (savingsRateNum >= 10) healthScore += 20;
+    else if (savingsRateNum >= 0) healthScore += 10;
+    
+    if (netSavings > 0) healthScore += 30;
+    else if (netSavings > -totalIncome * 0.1) healthScore += 15;
+    
+    analysis += `• Health Score: ${healthScore}/${maxScore}\n`;
+    if (healthScore >= 80) analysis += `• Status: Excellent financial health\n`;
+    else if (healthScore >= 60) analysis += `• Status: Good financial health\n`;
+    else if (healthScore >= 40) analysis += `• Status: Fair financial health\n`;
+    else analysis += `• Status: Needs improvement\n`;
+
+    return analysis;
+  }
+
+  private getGeneralKnowledgeResponse(query: string): string | null {
+    const lowerQuery = query.toLowerCase();
+
+    // Time and date
+    if (lowerQuery.includes('time') || lowerQuery.includes('date')) {
+      const now = new Date();
+      return `🕐 It's currently ${now.toLocaleTimeString()} on ${now.toLocaleDateString()}.`;
+    }
+
+    // Weather (simulated)
+    if (lowerQuery.includes('weather')) {
+      return `🌤️ I don't have access to real-time weather data, but you can check your local weather service. Would you like me to help you with something else?`;
+    }
+
+    // Math calculations
+    if (lowerQuery.includes('calculate') || lowerQuery.includes('math') || /[\d+\-*/]/.test(query)) {
+      try {
+        const numbers = this.extractNumbers(query);
+        if (numbers.length >= 2) {
+          const expression = query.replace(/[^0-9+\-*/().]/g, '');
+          const result = eval(expression);
+          if (!isNaN(result)) {
+            let calcResponse = `🔢 **Calculation Result**\n\n`;
+            calcResponse += `• Expression: ${expression}\n`;
+            calcResponse += `• Result: ${result}\n`;
+            
+            // Additional calculations
+            if (numbers.length >= 2) {
+              const sum = numbers.reduce((a, b) => a + b, 0);
+              const product = numbers.reduce((a, b) => a * b, 1);
+              const avg = sum / numbers.length;
+              const max = Math.max(...numbers);
+              const min = Math.min(...numbers);
+              
+              calcResponse += `\n📊 **Additional Statistics**\n`;
+              calcResponse += `• Sum: ${sum}\n`;
+              calcResponse += `• Product: ${product}\n`;
+              calcResponse += `• Average: ${avg.toFixed(2)}\n`;
+              calcResponse += `• Maximum: ${max}\n`;
+              calcResponse += `• Minimum: ${min}\n`;
+              calcResponse += `• Range: ${max - min}\n`;
+            }
+            
+            return calcResponse;
+          }
+        }
+      } catch {
+        return `🔢 I couldn't calculate that. Please provide a clear mathematical expression like "25 * 4" or "100 + 50 - 20".`;
+      }
+    }
+
+    // General knowledge
+    const generalKnowledge: Record<string, string> = {
+      'who are you': "I'm ExpenseAI, your intelligent financial assistant! I help you track expenses, manage income, and provide personalized financial insights - all while keeping your data private and local on your device. I can perform detailed financial analysis, calculations, and answer general questions.",
+      'what can you do': "I can help you with:\n\n💰 Financial tracking (expenses & income)\n📊 Comprehensive spending analysis and insights\n💡 Money-saving tips and recommendations\n🎯 Budget planning and tracking\n📈 Financial health assessment\n🤖 General questions and calculations\n📜 Transaction history and details\n🔢 Mathematical calculations with statistics\n\nAll powered by local AI with no external services!",
+      'how are you': "I'm functioning perfectly and ready to help! 🤖 All systems are operational and your data is secure and private. I'm continuously learning from your financial patterns to provide better insights.",
+      'thank': "You're welcome! 😊 I'm always here to help with your financial questions. Is there anything else you'd like to know? I can provide detailed analysis, calculations, or answer any other questions you might have.",
+      'good morning': "Good morning! ☀️ Hope you have a productive day! Ready to help you track your finances, provide detailed analysis, or answer any questions. How can I assist you today?",
+      'good afternoon': "Good afternoon! 🌤️ How can I assist you with your finances today? I can provide comprehensive analysis, calculations, or help with any financial questions you might have.",
+      'good evening': "Good evening! 🌙 Hope you had a great day. What can I help you with? I can provide detailed financial analysis, calculations, or answer any questions before you wrap up your day.",
+      'joke': "Why don't scientists trust atoms? Because they make up everything! 😄\n\nWant a financial joke instead? Why did the dollar go to school? To get better cents! Or why do financial advisors never get lost? Because they always know their net worth!",
+      'meaning of life': "According to Douglas Adams, the answer is 42. But in finance, the meaning of life is financial freedom and peace of mind! 💰✨\n\nFinancial freedom means having enough savings, investments, and cash to afford the lifestyle you desire. It's about making your money work for you, not the other way around.",
+      'help': "I can provide detailed assistance with:\n\n📊 **Financial Analysis**: Comprehensive breakdowns of your income, expenses, savings, and financial health\n📜 **Transaction History**: View all your income and expense transactions with filters\n🔢 **Calculations**: Mathematical operations with detailed statistics\n💡 **Insights**: AI-powered recommendations based on your spending patterns\n📈 **Projections**: Monthly and yearly financial projections\n🏥 **Health Score**: Overall financial wellness assessment\n\nJust ask me anything! Try 'comprehensive analysis', 'show my history', 'calculate 25 * 4', or 'what's my financial health?'",
+    };
+
+    for (const [key, response] of Object.entries(generalKnowledge)) {
+      if (lowerQuery.includes(key)) {
+        return response;
+      }
+    }
+
+    return null;
+  }
+
+  getResponse(input: string, expenses?: Expense[], income?: Income[]): { response: string; quickActions?: string[] } {
+    if (expenses && income) {
+      this.updateContext(expenses, income);
+    }
+
+    this.addToHistory(input);
+    const lowerInput = input.toLowerCase();
+
+    // Check for history queries
+    if (this.fuzzyMatch(input, ['history', 'transaction history', 'show history', 'view history', 'recent transactions', 'past transactions'])) {
+      return {
+        response: this.getTransactionHistory('all', 10),
+        quickActions: ['View expense history', 'View income history', 'View last 7 days']
+      };
+    }
+
+    // Check for expense history queries
+    if (this.fuzzyMatch(input, ['expense history', 'expense transactions', 'past expenses', 'spent history'])) {
+      return {
+        response: this.getTransactionHistory('expenses', 10),
+        quickActions: ['View all history', 'View income history', 'Add expense']
+      };
+    }
+
+    // Check for income history queries
+    if (this.fuzzyMatch(input, ['income history', 'income transactions', 'past income', 'earned history'])) {
+      return {
+        response: this.getTransactionHistory('income', 10),
+        quickActions: ['View all history', 'View expense history', 'Add income']
+      };
+    }
+
+    // Check for recent transactions (last 7 days)
+    if (this.fuzzyMatch(input, ['recent', 'last 7 days', 'this week', 'past week', 'last week'])) {
+      return {
+        response: this.getRecentTransactions(7),
+        quickActions: ['View full history', 'View last 30 days', 'View today']
+      };
+    }
+
+    // Check for last 30 days
+    if (this.fuzzyMatch(input, ['last 30 days', 'this month', 'past month', 'last month'])) {
+      return {
+        response: this.getRecentTransactions(30),
+        quickActions: ['View full history', 'View last 7 days', 'View today']
+      };
+    }
+
+    // Check for today's transactions
+    if (this.fuzzyMatch(input, ['today', 'todays transactions', 'today only'])) {
+      return {
+        response: this.getRecentTransactions(1),
+        quickActions: ['View last 7 days', 'View last 30 days', 'View full history']
+      };
+    }
+
+    // Check for comprehensive analysis queries
+    if (this.fuzzyMatch(input, ['comprehensive', 'detailed', 'full analysis', 'complete', 'everything', 'all details', 'breakdown'])) {
+      return {
+        response: this.getComprehensiveFinancialAnalysis(),
+        quickActions: ['View history', 'Get calculations', 'Financial health']
+      };
+    }
+
+    // Check for financial queries
+    if (this.fuzzyMatch(input, ['how much', 'total', 'spending', 'income', 'balance', 'savings', 'overview', 'summary', 'financial'])) {
+      return {
+        response: this.getComprehensiveFinancialAnalysis(),
+        quickActions: ['View expenses', 'View income', 'Get insights']
+      };
+    }
+
+    // Check for specific expense queries
+    if (this.fuzzyMatch(input, ['expense', 'spent', 'cost'])) {
+      const totalExpenses = this.financialContext.expenses.reduce((sum, e) => sum + e.amount, 0);
+      return {
+        response: `💰 You've spent ₹${totalExpenses.toFixed(2)} in total across ${this.financialContext.expenses.length} expense entries.\n\n${this.financialContext.expenses.length > 0 ? 'Would you like to see a breakdown by category?' : 'Add some expenses to start tracking!'}`,
+        quickActions: ['View expense breakdown', 'Add expense', 'View history']
+      };
+    }
+
+    // Check for income queries
+    if (this.fuzzyMatch(input, ['income', 'earn', 'salary', 'revenue'])) {
+      const totalIncome = this.financialContext.income.reduce((sum, i) => sum + i.amount, 0);
+      return {
+        response: `💵 You've earned ₹${totalIncome.toFixed(2)} in total across ${this.financialContext.income.length} income entries.\n\n${this.financialContext.income.length > 0 ? 'Your income helps you track your financial health!' : 'Add some income entries to start tracking!'}`,
+        quickActions: ['View income breakdown', 'Add income', 'View income history']
+      };
+    }
+
+    // Check for savings queries
+    if (this.fuzzyMatch(input, ['save', 'saving', 'net', 'leftover'])) {
+      const totalExpenses = this.financialContext.expenses.reduce((sum, e) => sum + e.amount, 0);
+      const totalIncome = this.financialContext.income.reduce((sum, i) => sum + i.amount, 0);
+      const netSavings = totalIncome - totalExpenses;
+      const savingsRate = totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : '0';
+      
+      return {
+        response: `💎 Your net savings: ₹${netSavings.toFixed(2)}\n\nSavings rate: ${savingsRate}%\n\n${netSavings > 0 ? '🎉 Great job saving money!' : netSavings < 0 ? '⚠️ You\'re spending more than you earn. Consider reviewing your expenses.' : '📊 You\'re breaking even. Try to save at least 20% of your income.'}`,
+        quickActions: ['View spending tips', 'Set savings goal', 'Analyze expenses']
+      };
+    }
+
+    // Check for general knowledge
+    const generalResponse = this.getGeneralKnowledgeResponse(input);
+    if (generalResponse) {
+      return {
+        response: generalResponse,
+        quickActions: ['Ask about finances', 'View dashboard', 'Get help']
+      };
+    }
+
+    // Default to helpful guidance
+    const defaultResponses = [
+      {
+        response: "I understand you're asking about \"" + input + "\". While I specialize in financial tracking, I can help with:\n\n💰 Your expenses and income\n📊 Financial insights and analysis\n💡 Money-saving tips\n🧮 Calculations\n🕐 Time and date\n\nCould you rephrase your question or ask about your finances?",
+        quickActions: ['View my finances', 'Add expense', 'Get insights']
+      },
+      {
+        response: "I'm here to help! I can assist with:\n\n📊 **Financial tracking** - Expenses, income, savings\n💡 **Smart insights** - AI-powered analysis\n🧮 **Calculations** - Math and numbers\n🕐 **Time & date** - Current time information\n\nWhat would you like to know?",
+        quickActions: ['View financial overview', 'Calculate something', 'Get time']
+      }
+    ];
+
+    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+  }
+}
+
+export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hi! 👋 I\'m your ExpenseAI assistant. I can help you with:\n\n• Adding and managing expenses\n• Understanding your spending patterns\n• Using the AI features\n• Setting budgets and goals\n• Analyzing financial health\n\nWhat would you like help with?',
+      text: 'Hi! 👋 I\'m your ExpenseAI assistant. I can help you with:\n\n• Adding and managing expenses\n• Understanding your spending patterns\n• Using the AI features\n• Setting budgets and goals\n• Analyzing financial health\n• Answering general questions\n\nWhat would you like help with?',
       sender: 'bot',
       timestamp: new Date(),
-      quickActions: ['How to add expense', 'View my insights', 'Set a budget']
+      quickActions: ['How much did I spend?', 'What\'s my income?', 'Tell me a joke']
     }
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -104,6 +592,7 @@ export default function AIChatbot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesis | null>(null);
+  const localAIRef = useRef(new LocalAI(expenses, income));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -197,15 +686,7 @@ export default function AIChatbot() {
   };
 
   const getBotResponse = (userMessage: string): { response: string; quickActions?: string[] } => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    for (const [key, data] of Object.entries(guidanceResponses)) {
-      if (lowerMessage.includes(key) && key !== 'default') {
-        return data;
-      }
-    }
-    
-    return guidanceResponses.default;
+    return localAIRef.current.getResponse(userMessage, expenses, income);
   };
 
   const handleSendMessage = () => {

@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Plus, 
-  History, 
-  TrendingUp, 
-  PieChart, 
-  Settings, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Plus,
+  History,
+  TrendingUp,
+  PieChart,
+  Settings,
+  Menu,
   X,
   Wallet,
   Calendar,
-  BarChart3
+  BarChart3,
+  DollarSign
 } from 'lucide-react';
 
-type View = 'dashboard' | 'add-expense' | 'history' | 'analytics' | 'insights' | 'settings';
+type View = 'dashboard' | 'add-expense' | 'add-income' | 'history' | 'income-history' | 'analytics' | 'insights' | 'settings';
 
 interface SidebarProps {
   currentView: View;
@@ -33,7 +34,9 @@ export default function Sidebar({
   const menuItems = [
     { id: 'dashboard' as View, icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'add-expense' as View, icon: Plus, label: 'Add Expense' },
-    { id: 'history' as View, icon: History, label: 'History' },
+    { id: 'add-income' as View, icon: DollarSign, label: 'Add Income' },
+    { id: 'history' as View, icon: History, label: 'Expense History' },
+    { id: 'income-history' as View, icon: DollarSign, label: 'Income History' },
     { id: 'analytics' as View, icon: BarChart3, label: 'Analytics' },
     { id: 'insights' as View, icon: TrendingUp, label: 'AI Insights' },
     { id: 'settings' as View, icon: Settings, label: 'Settings' },

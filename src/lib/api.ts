@@ -1,4 +1,4 @@
-import { Expense } from '../types';
+import { Expense, Income } from '../types';
 
 export interface ApiUser {
   id: string;
@@ -12,6 +12,7 @@ export interface AuthSession {
 }
 
 type ExpenseInput = Omit<Expense, 'id'>;
+type IncomeInput = Omit<Income, 'id'>;
 
 const TOKEN_KEY = 'expenseai_api_token';
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
@@ -162,6 +163,39 @@ export async function updateExpense(expense: Expense): Promise<Expense> {
 
 export async function deleteExpense(id: string): Promise<void> {
   await request<{ ok: boolean }>(`/expenses/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchIncome(): Promise<Income[]> {
+  const data = await request<{ income: Income[] }>('/income');
+  return data.income;
+}
+
+export async function createIncome(income: IncomeInput): Promise<Income> {
+  const data = await request<{ income: Income }>('/income', {
+    method: 'POST',
+    body: JSON.stringify(income),
+  });
+  return data.income;
+}
+
+export async function updateIncome(income: Income): Promise<Income> {
+  const data = await request<{ income: Income }>(`/income/${encodeURIComponent(income.id)}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      description: income.description,
+      amount: income.amount,
+      category: income.category,
+      date: income.date,
+      notes: income.notes,
+    }),
+  });
+  return data.income;
+}
+
+export async function deleteIncome(id: string): Promise<void> {
+  await request<{ ok: boolean }>(`/income/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }
