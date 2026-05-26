@@ -52,7 +52,8 @@ async function preprocessImageForOcr(file: File): Promise<Blob | File> {
 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.filter = 'grayscale(1) contrast(1.9) brightness(1.08)';
+    // Enhanced preprocessing for better OCR
+    ctx.filter = 'grayscale(1) contrast(2.2) brightness(1.1) saturate(1.2)';
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     ctx.filter = 'none';
     bitmap.close();
@@ -61,7 +62,8 @@ async function preprocessImageForOcr(file: File): Promise<Blob | File> {
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
       const value = data[i];
-      const cleaned = value < 185 ? Math.max(0, value - 25) : Math.min(255, value + 18);
+      // More aggressive thresholding for better text contrast
+      const cleaned = value < 170 ? Math.max(0, value - 35) : Math.min(255, value + 25);
       data[i] = cleaned;
       data[i + 1] = cleaned;
       data[i + 2] = cleaned;
@@ -145,6 +147,7 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
           tessedit_pageseg_mode: PSM.AUTO,
           preserve_interword_spaces: '1',
           user_defined_dpi: '300',
+          tessedit_char_whitelist: '0123456789.+-₹$%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ,.:;()[]{}-_=+*/&@#!?',
         });
 
         setProgressLabel('Preparing image…');
@@ -272,11 +275,23 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
     canvas.height = Math.floor(video.videoHeight * scale);
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    // Simple preprocessing: contrast + grayscale to help Tesseract.
+    // Enhanced preprocessing: contrast + grayscale + saturation to help Tesseract.
     // (Supported in modern browsers for drawImage.)
-    ctx.filter = 'grayscale(1) contrast(1.6) brightness(1.05)';
+    ctx.filter = 'grayscale(1) contrast(2.2) brightness(1.1) saturate(1.2)';
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.filter = 'none';
+
+    // Apply additional thresholding for better text contrast
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const value = data[i];
+      const cleaned = value < 170 ? Math.max(0, value - 35) : Math.min(255, value + 25);
+      data[i] = cleaned;
+      data[i + 1] = cleaned;
+      data[i + 2] = cleaned;
+    }
+    ctx.putImageData(imageData, 0, 0);
 
     canvas.toBlob(
       (blob) => {

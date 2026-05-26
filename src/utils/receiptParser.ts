@@ -137,6 +137,7 @@ function extractAmountsFromLine(line: string): number[] {
 }
 
 function extractTrailingAmount(line: string): { amount: number; label: string; hadCurrency: boolean } | null {
+  // Try currency symbol first (most reliable)
   const currencyMatch = line.match(/^(.*?)(?:₹|rs\.?\s*|inr\s*|r\s*s\s*)([0-9OoQDIl|SsBb,\.\s]{1,18}(?:\/-)?)\s*$/i);
   if (currencyMatch) {
     const amount = parseMoneyToken(currencyMatch[2]);
@@ -145,6 +146,7 @@ function extractTrailingAmount(line: string): { amount: number; label: string; h
     }
   }
 
+  // Try decimal format (e.g., "Item 123.45")
   const decimalMatch = line.match(/^(.*?)\s+([0-9OoQDIl|SsBb,]+[.,][0-9OoQDIl|SsBb]{1,2}|[0-9OoQDIl|SsBb]{2,5}\/-)\s*$/);
   if (decimalMatch) {
     const amount = parseMoneyToken(decimalMatch[2]);
@@ -153,11 +155,21 @@ function extractTrailingAmount(line: string): { amount: number; label: string; h
     }
   }
 
+  // Try whole number with text (e.g., "Item 123")
   const wholeNumberMatch = line.match(/^(.*?)\s+([0-9OoQDIl|SsBb]{2,5})\s*$/);
   if (wholeNumberMatch && /[a-z]/i.test(wholeNumberMatch[1])) {
     const amount = parseMoneyToken(wholeNumberMatch[2]);
     if (amount !== null && amount >= 10 && amount <= 50_000) {
       return { amount, label: wholeNumberMatch[1], hadCurrency: false };
+    }
+  }
+
+  // Try to find amount anywhere in line (for receipts with different formatting)
+  const amountAnywhere = line.match(/^(.*?)\s*([0-9OoQDIl|SsBb,]+[.,][0-9OoQDIl|SsBb]{1,2}|[0-9OoQDIl|SsBb]{2,5}\/-)\s*(.*)$/);
+  if (amountAnywhere && amountAnywhere[1].length > 0) {
+    const amount = parseMoneyToken(amountAnywhere[2]);
+    if (amount !== null && amount >= 1 && amount <= 50_000) {
+      return { amount, label: amountAnywhere[1], hadCurrency: false };
     }
   }
 
@@ -215,15 +227,15 @@ function extractQuantity(name: string): { name: string; quantity?: number } {
 }
 
 function isLikelyItemName(name: string): boolean {
-  if (name.length < 3 || name.length > 80) return false;
+  if (name.length < 2 || name.length > 80) return false;
   if (!/[a-z]/i.test(name)) return false;
   if (NON_ITEM_LINE_HINTS.test(name)) return false;
   if (/^\d+(?:\.\d+)?$/.test(name)) return false;
   
   // Filter out address-like patterns
   if (/^\d+[\s,]*[a-z]+/i.test(name) && /\d{6}$/.test(name)) return false; // PIN codes
-  if (/^\d+[\s,-]+[a-z]+[\s,-]+[a-z]+/i.test(name) && name.split(/[\s,-]+/).length >= 3) {
-    // Likely address: number + street name + city/state
+  if (/^\d+[\s,-]+[a-z]+[\s,-]+[a-z]+/i.test(name) && name.split(/[\s,-]+/).length >= 4) {
+    // Likely address: number + street name + city/state + more
     return false;
   }
   
@@ -242,10 +254,13 @@ function isLikelyItemName(name: string): boolean {
   if (/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/i.test(name)) return false;
   if (/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(name)) return false;
   
-  // Filter out lines that are mostly numbers
+  // Filter out lines that are mostly numbers (but be more lenient)
   const numberCount = (name.match(/\d/g) || []).length;
   const letterCount = (name.match(/[a-z]/gi) || []).length;
-  if (numberCount > letterCount && numberCount > 3) return false;
+  if (numberCount > letterCount * 2 && numberCount > 5) return false;
+  
+  // Allow short item names (2-3 chars) if they have letters
+  if (name.length >= 2 && name.length <= 3 && /[a-z]/i.test(name)) return true;
   
   return true;
 }
@@ -253,10 +268,12 @@ function isLikelyItemName(name: string): boolean {
 function extractLineItems(lines: string[], receiptTotal: number | null): ReceiptLineItem[] {
   const items: ReceiptLineItem[] = [];
   let pendingName: string | null = null;
+  let pendingAmount: number | null = null;
 
   for (const line of lines) {
     if (TOTAL_LINE_HINTS.test(line) || WEAK_TOTAL_HINTS.test(line)) {
       pendingName = null;
+      pendingAmount = null;
       continue;
     }
 
@@ -265,6 +282,13 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
     if (trailing) {
       const rawName = cleanItemLabel(trailing.label);
       const fallbackName = rawName || pendingName || '';
+
+      // Check if this is likely the total line (matches receipt total exactly)
+      if (receiptTotal !== null && Math.abs(trailing.amount - receiptTotal) < 0.01 && rawName.length === 0) {
+        pendingName = null;
+        pendingAmount = null;
+        continue;
+      }
 
       if (
         fallbackName &&
@@ -287,6 +311,27 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
       }
 
       pendingName = null;
+      pendingAmount = null;
+      continue;
+    }
+
+    // Handle multi-line items: if we have a pending name and this line has an amount
+    const amountsInLine = extractAmountsFromLine(line);
+    if (amountsInLine.length > 0 && pendingName) {
+      const amount = amountsInLine[0];
+      if (receiptTotal === null || Math.abs(amount - receiptTotal) > 0.01) {
+        const quantityResult = extractQuantity(pendingName);
+        const name = cleanItemName(quantityResult.name);
+        if (isLikelyItemName(name)) {
+          items.push({
+            name,
+            amount,
+            ...(quantityResult.quantity ? { quantity: quantityResult.quantity } : {}),
+          });
+        }
+      }
+      pendingName = null;
+      pendingAmount = null;
       continue;
     }
 
@@ -296,6 +341,7 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
     }
   }
 
+  // Deduplicate items
   const seen = new Set<string>();
   return items
     .filter((item) => {
