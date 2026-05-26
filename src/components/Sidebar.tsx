@@ -13,6 +13,7 @@ import {
   BarChart3,
   DollarSign
 } from 'lucide-react';
+import UserProfile from './UserProfile';
 
 type View = 'dashboard' | 'add-expense' | 'add-income' | 'history' | 'income-history' | 'analytics' | 'insights' | 'settings';
 
@@ -22,6 +23,8 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   isDarkMode: boolean;
+  userEmail: string;
+  onLogout: () => void;
 }
 
 export default function Sidebar({ 
