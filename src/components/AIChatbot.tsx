@@ -589,6 +589,10 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [chatSize, setChatSize] = useState({ width: 384, height: 384 }); // w-96 = 384px, h-96 = 384px
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w' | null>(null);
+  const [resizeStart, setResizeStart] = useState<{ mouseX: number; mouseY: number; width: number; height: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesis | null>(null);
@@ -597,6 +601,72 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const handleResizeStart = (direction: 'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizeDirection(direction);
+    setIsResizing(true);
+    setResizeStart({
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      width: chatSize.width,
+      height: chatSize.height
+    });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !resizeDirection || !resizeStart) return;
+
+      const minWidth = 300;
+      const minHeight = 300;
+      const maxWidth = window.innerWidth - 50;
+      const maxHeight = window.innerHeight - 50;
+
+      const deltaX = e.clientX - resizeStart.mouseX;
+      const deltaY = e.clientY - resizeStart.mouseY;
+
+      let newWidth = resizeStart.width;
+      let newHeight = resizeStart.height;
+
+      // Calculate new dimensions based on resize direction using delta
+      if (resizeDirection.includes('e')) {
+        newWidth = resizeStart.width + deltaX;
+      }
+      if (resizeDirection.includes('w')) {
+        newWidth = resizeStart.width - deltaX;
+      }
+      if (resizeDirection.includes('s')) {
+        newHeight = resizeStart.height + deltaY;
+      }
+      if (resizeDirection.includes('n')) {
+        newHeight = resizeStart.height - deltaY;
+      }
+
+      // Apply constraints
+      newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+      newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+
+      setChatSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      setResizeDirection(null);
+      setResizeStart(null);
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, resizeDirection, resizeStart]);
 
   useEffect(() => {
     scrollToBottom();
@@ -766,7 +836,64 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
+        <div 
+          className="fixed bottom-6 right-6 z-50 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden"
+          style={{ 
+            width: `${chatSize.width}px`,
+            height: `${chatSize.height}px`,
+            maxWidth: 'calc(100vw - 2rem)',
+            maxHeight: 'calc(100vh - 2rem)'
+          }}
+        >
+          {/* Resize Handles */}
+          <div 
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10"
+            onMouseDown={(e) => handleResizeStart('se', e)}
+          >
+            <div className="w-full h-full bg-gradient-to-tl from-purple-500/50 to-transparent rounded-bl-lg" />
+          </div>
+          <div 
+            className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-10"
+            onMouseDown={(e) => handleResizeStart('sw', e)}
+          >
+            <div className="w-full h-full bg-gradient-to-tr from-purple-500/50 to-transparent rounded-br-lg" />
+          </div>
+          <div 
+            className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-10"
+            onMouseDown={(e) => handleResizeStart('ne', e)}
+          >
+            <div className="w-full h-full bg-gradient-to-bl from-purple-500/50 to-transparent rounded-br-lg" />
+          </div>
+          <div 
+            className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-10"
+            onMouseDown={(e) => handleResizeStart('nw', e)}
+          >
+            <div className="w-full h-full bg-gradient-to-br from-purple-500/50 to-transparent rounded-tr-lg" />
+          </div>
+          <div 
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-2 cursor-n-resize z-10"
+            onMouseDown={(e) => handleResizeStart('n', e)}
+          >
+            <div className="w-full h-full bg-gradient-to-b from-purple-500/50 to-transparent rounded-b-lg" />
+          </div>
+          <div 
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-2 cursor-s-resize z-10"
+            onMouseDown={(e) => handleResizeStart('s', e)}
+          >
+            <div className="w-full h-full bg-gradient-to-t from-purple-500/50 to-transparent rounded-t-lg" />
+          </div>
+          <div 
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-8 cursor-w-resize z-10"
+            onMouseDown={(e) => handleResizeStart('w', e)}
+          >
+            <div className="w-full h-full bg-gradient-to-r from-purple-500/50 to-transparent rounded-r-lg" />
+          </div>
+          <div 
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-8 cursor-e-resize z-10"
+            onMouseDown={(e) => handleResizeStart('e', e)}
+          >
+            <div className="w-full h-full bg-gradient-to-l from-purple-500/50 to-transparent rounded-l-lg" />
+          </div>
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-500 to-cyan-500 p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -787,7 +914,10 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
           </div>
 
           {/* Messages */}
-          <div className="h-96 overflow-y-auto p-4 space-y-4 bg-slate-900/50">
+          <div 
+            className="overflow-y-auto p-4 space-y-4 bg-slate-900/50"
+            style={{ height: `${chatSize.height - 180}px` }}
+          >
             {messages.map((message) => (
               <div
                 key={message.id}

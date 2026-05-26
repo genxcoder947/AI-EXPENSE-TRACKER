@@ -32,7 +32,9 @@ export default function Sidebar({
   onViewChange, 
   isCollapsed, 
   onToggleCollapse,
-  isDarkMode 
+  isDarkMode,
+  userEmail,
+  onLogout
 }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard' as View, icon: LayoutDashboard, label: 'Dashboard' },
@@ -100,14 +102,13 @@ export default function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200 dark:border-slate-700">
-        {!isCollapsed && (
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            <p>Powered by AI</p>
-            <p className="mt-1">Your data stays local</p>
-          </div>
-        )}
-      </div>
+      <UserProfile
+        userEmail={userEmail}
+        onLogout={onLogout}
+        onSettingsClick={() => onViewChange('settings')}
+        isDarkMode={isDarkMode}
+        isCollapsed={isCollapsed}
+      />
     </div>
   );
 }

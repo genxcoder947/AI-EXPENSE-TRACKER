@@ -1,7 +1,4 @@
 import { type CSSProperties, useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { formatCurrency } from '../utils/helpers';
 import { Expense } from '../types';
 
@@ -15,15 +12,15 @@ type Slice = {
 };
 
 const COLORS = [
-  'var(--chart-emerald)',
-  'var(--chart-blue)',
-  'var(--chart-amber)',
-  'var(--chart-violet)',
-  'var(--chart-rose)',
-  'var(--chart-cyan)',
-  'var(--chart-orange)',
-  'var(--chart-indigo)',
-  'var(--chart-slate)',
+  '#10b981', // emerald
+  '#3b82f6', // blue
+  '#f59e0b', // amber
+  '#8b5cf6', // violet
+  '#f43f5e', // rose
+  '#06b6d4', // cyan
+  '#f97316', // orange
+  '#6366f1', // indigo
+  '#64748b', // slate
 ];
 
 function parseDateOnly(dateString: string): Date {
@@ -129,7 +126,7 @@ const CATEGORY_COLOR_MAP: Record<string, string> = (() => {
 })();
 
 function colorForLabel(label: string): string {
-  return CATEGORY_COLOR_MAP[label] || '#64748B';
+  return CATEGORY_COLOR_MAP[label] || COLORS[CATEGORY_ORDER.length % COLORS.length];
 }
 
 function computeSlices(args: {
@@ -268,7 +265,7 @@ function PieSvg({
         cx={cx}
         cy={cy}
         r={r}
-        stroke="var(--chart-track)"
+        stroke="#e2e8f0"
         strokeWidth={stroke}
         fill="none"
       />
@@ -317,6 +314,8 @@ export function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
     return computeSlices({ expenses, start, end, searchTerm: '' });
   }, [expenses, range]);
 
+  console.log('CategoryPieChart - expenses:', expenses.length, 'total:', total, 'slices:', slices.length);
+
   const mainSize = 220;
   const mainR = 82;
   const mainStroke = 34;
@@ -336,11 +335,11 @@ export function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
 
   return (
     <>
-      <Card className="bg-white border border-slate-200 shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-slate-50">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm" style={{ minHeight: '300px', zIndex: 1, pointerEvents: 'auto' }}>
+        <div className="border-b border-slate-100 bg-slate-50 p-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <CardTitle className="text-lg font-semibold text-slate-800">Category Mix</CardTitle>
+              <h3 className="text-lg font-semibold text-slate-800">Category Mix</h3>
               <p className="text-xs text-slate-500">Breakdown by category for the selected range.</p>
             </div>
 
@@ -353,36 +352,38 @@ export function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
                   ['years', 'Years'],
                 ] as Array<[MainTimeRange, string]>
               ).map(([key, label]) => (
-                <Button
+                <button
                   key={key}
                   type="button"
                   onClick={() => setRange(key)}
-                  disabled={total === 0}
+                  style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                   className={
                     range === key
-                      ? 'bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-700'
-                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-emerald-50'
+                      ? 'bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded'
+                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-emerald-50 px-3 py-2 rounded'
                   }
                 >
                   {label}
-                </Button>
+                </button>
               ))}
 
-              <Button
+              <button
                 type="button"
-                disabled={total === 0}
                 onClick={() => setModalOpen(true)}
-                className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium px-3 py-2"
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium px-3 py-2 rounded"
               >
                 View full chart
-              </Button>
+              </button>
             </div>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="p-6">
-          {total === 0 ? (
-            <div className="text-sm text-slate-500">Add some expenses to see the pie chart.</div>
+        <div className="p-6">
+          {expenses.length === 0 ? (
+            <div className="text-sm text-slate-500">No expenses found. Add some expenses to see the pie chart.</div>
+          ) : total === 0 ? (
+            <div className="text-sm text-slate-500">No expenses in the selected time range. Try a different time range.</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
               <div className="flex items-center justify-center">
@@ -419,33 +420,35 @@ export function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 chart-modal-backdrop"
           role="dialog"
           aria-modal="true"
+          style={{ pointerEvents: 'auto' }}
         >
-          <div className="w-full max-w-5xl rounded-xl bg-white dark:bg-slate-800 shadow-xl p-5 chart-modal-panel text-slate-900 dark:text-slate-100">
+          <div className="w-full max-w-5xl rounded-xl bg-white dark:bg-slate-800 shadow-xl p-5 chart-modal-panel text-slate-900 dark:text-slate-100" style={{ pointerEvents: 'auto' }}>
             <div className="flex items-start justify-between gap-3 mb-4">
               <div className="min-w-0">
-                <CardTitle className="text-lg font-semibold text-slate-800">
+                <h3 className="text-lg font-semibold text-slate-800">
                   Pie chart details
-                </CardTitle>
+                </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   Search by category/description and view category mix for a specific time window.
                 </p>
               </div>
 
-              <Button
+              <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold px-3 py-2"
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold px-3 py-2 rounded"
               >
                 Close
-              </Button>
+              </button>
             </div>
 
             <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-5">
@@ -458,28 +461,31 @@ export function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
                     ['year', 'Year'],
                   ] as Array<[ModalTimeRange, string]>
                 ).map(([key, label]) => (
-                  <Button
+                  <button
                     key={key}
                     type="button"
                     disabled={expenses.length === 0}
                     onClick={() => setModalRange(key)}
+                    style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                     className={
                       modalRange === key
-                        ? 'bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-700'
-                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-emerald-50'
+                        ? 'bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-emerald-50 px-3 py-2 rounded'
                     }
                   >
                     {label}
-                  </Button>
+                  </button>
                 ))}
               </div>
 
               <div className="flex-1">
-                <Input
+                <input
+                  type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search category or expense description..."
-                  className="w-full"
+                  className="w-full px-3 py-2 border border-slate-300 rounded"
+                  style={{ pointerEvents: 'auto' }}
                 />
                 <div className="text-[11px] text-slate-500 mt-1">
                   Example: <span className="font-medium">Zomato</span>, <span className="font-medium">Food &amp; Dining</span>, or any keyword you typed.

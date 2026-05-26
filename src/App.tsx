@@ -16,6 +16,7 @@ import Login from './components/auth/Login';
 import AIChatbot from './components/AIChatbot';
 import Sidebar from './components/Sidebar';
 import ExpenseTimelineGraph from './components/ExpenseTimelineGraph';
+import AccountSettings from './components/AccountSettings';
 import {
   type ApiUser,
   clearStoredSession,
@@ -234,6 +235,8 @@ export default function App() {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         isDarkMode={darkMode}
+        userEmail={user?.email || ''}
+        onLogout={() => void handleLogout()}
       />
 
       {/* Main Content */}
@@ -358,28 +361,18 @@ export default function App() {
           )}
 
           {currentView === 'settings' && (
-            <div className="max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Settings</h2>
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold text-slate-800 dark:text-white">Dark Mode</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Toggle dark theme</p>
-                  </div>
-                  <button
-                    onClick={toggleTheme}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      darkMode ? 'bg-purple-500' : 'bg-slate-300'
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        darkMode ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Account Settings</h2>
+              <AccountSettings
+                userEmail={user?.email || ''}
+                userCreatedAt={user?.createdAt || ''}
+                totalExpenses={expenses.reduce((sum, e) => sum + e.amount, 0)}
+                totalIncome={income.reduce((sum, i) => sum + i.amount, 0)}
+                expenseCount={expenses.length}
+                incomeCount={income.length}
+                isDarkMode={darkMode}
+                onLogout={() => void handleLogout()}
+              />
             </div>
           )}
         </main>
