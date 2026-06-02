@@ -6,6 +6,7 @@ import { ArrowUpRight, Calendar, Sparkles, TrendingUp, X, DollarSign, Target, Pi
 
 interface IncomeOverviewProps {
   income: Income[];
+  currency: string;
 }
 
 type StatDetail = 'total' | 'month' | 'category';
@@ -16,7 +17,7 @@ const detailTitles: Record<StatDetail, string> = {
   category: 'Top category details',
 };
 
-export function IncomeOverview({ income }: IncomeOverviewProps) {
+export function IncomeOverview({ income, currency }: IncomeOverviewProps) {
   const [activeDetail, setActiveDetail] = useState<StatDetail | null>(null);
   const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
   
@@ -90,11 +91,11 @@ export function IncomeOverview({ income }: IncomeOverviewProps) {
     // Savings potential
     if (averageIncome > 0) {
       const suggestedSavings = averageIncome * 0.2; // 20% savings rule
-      insights.push(`💰 Based on your average income, aim to save ${formatCurrency(suggestedSavings)} per income entry (20% rule).`);
+      insights.push(`💰 Based on your average income, aim to save ${formatCurrency(suggestedSavings, currency)} per income entry (20% rule).`);
     }
 
     return insights;
-  }, [income, thisMonthTotal]);
+  }, [income, thisMonthTotal, currency]);
 
   const detailIncome =
     activeDetail === 'month'
@@ -110,8 +111,8 @@ export function IncomeOverview({ income }: IncomeOverviewProps) {
     {
       id: 'total' as const,
       label: 'Total Income',
-      value: formatCurrency(totalIncome),
-      helper: `Average: ${formatCurrency(averageIncome)} per entry`,
+      value: formatCurrency(totalIncome, currency),
+      helper: `Average: ${formatCurrency(averageIncome, currency)} per entry`,
       icon: DollarSign,
       color: 'from-green-500 to-green-600',
       textColor: 'text-green-100',
@@ -119,7 +120,7 @@ export function IncomeOverview({ income }: IncomeOverviewProps) {
     {
       id: 'month' as const,
       label: 'This Month',
-      value: formatCurrency(thisMonthTotal),
+      value: formatCurrency(thisMonthTotal, currency),
       helper: `${thisMonthIncome.length} income entries this month`,
       icon: Calendar,
       color: 'from-cyan-500 to-cyan-600',
@@ -129,7 +130,7 @@ export function IncomeOverview({ income }: IncomeOverviewProps) {
       id: 'category' as const,
       label: 'Top Source',
       value: topCategory ? topCategory[0] : 'N/A',
-      helper: topCategory ? formatCurrency(topCategory[1]) : 'No income yet',
+      helper: topCategory ? formatCurrency(topCategory[1], currency) : 'No income yet',
       icon: Target,
       color: 'from-amber-500 to-amber-600',
       textColor: 'text-amber-100',
@@ -203,7 +204,7 @@ export function IncomeOverview({ income }: IncomeOverviewProps) {
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">{detailTitles[activeDetail]}</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  {detailIncome.length} income entr{detailIncome.length === 1 ? 'y' : 'ies'} · {formatCurrency(detailTotal)} total · {formatCurrency(detailAverage)} average
+                  {detailIncome.length} income entr{detailIncome.length === 1 ? 'y' : 'ies'} · {formatCurrency(detailTotal, currency)} total · {formatCurrency(detailAverage, currency)} average
                 </p>
               </div>
               <button
@@ -234,7 +235,7 @@ export function IncomeOverview({ income }: IncomeOverviewProps) {
                       )}
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="font-semibold text-green-600">{formatCurrency(inc.amount)}</p>
+                      <p className="font-semibold text-green-600">{formatCurrency(inc.amount, currency)}</p>
                     </div>
                   </div>
                 ))}

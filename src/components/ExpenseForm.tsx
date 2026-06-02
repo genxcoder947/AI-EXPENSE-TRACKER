@@ -5,7 +5,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { ReceiptScanPanel, type ReceiptScanResult } from './ReceiptScanPanel';
 import { suggestCategory } from '../utils/aiEngine';
-import { generateId, getTodayString } from '../utils/helpers';
+import { generateId, getCurrencySymbol, getTodayString } from '../utils/helpers';
 import { AiSuggestion, Expense } from '../types';
 import { Check, Info, Lightbulb, Sparkles } from 'lucide-react';
 
@@ -26,6 +26,7 @@ const categories = [
 ];
 
 export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
+  const currencySymbol = getCurrencySymbol();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Other');
@@ -215,7 +216,7 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount" className="text-sm font-medium text-slate-700">Amount (₹)</Label>
+              <Label htmlFor="amount" className="text-sm font-medium text-slate-700">Amount ({currencySymbol})</Label>
               <Input
                 id="amount"
                 type="number"

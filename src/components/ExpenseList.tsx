@@ -198,9 +198,12 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
                       onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
                       placeholder="Optional notes"
                       maxLength={700}
-                      rows={4}
-                      className="min-h-24 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 caret-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 md:col-span-2"
+                      rows={8}
+                      className="min-h-40 w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-sm leading-relaxed text-slate-900 caret-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 md:col-span-2"
                     />
+                    <div className="text-right text-[11px] text-slate-400 md:col-span-2">
+                      {draft.notes.length}/700
+                    </div>
                   </div>
                   <div className="mt-3 flex items-center justify-end gap-2">
                     <button
@@ -252,10 +255,10 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
                           <span className="text-xs text-slate-500">{formatDate(expense.date)}</span>
                         </div>
                         {expense.notes && (
-                          <p className="mt-1 flex max-w-xl items-start gap-1.5 text-xs leading-relaxed text-slate-500">
+                          <div className="mt-2 flex max-w-xl items-start gap-1.5 rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs leading-relaxed text-slate-600">
                             <NotebookText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                            <span className="line-clamp-2">{expense.notes}</span>
-                          </p>
+                            <span className="whitespace-pre-wrap font-mono">{expense.notes}</span>
+                          </div>
                         )}
                       </>
                     )}

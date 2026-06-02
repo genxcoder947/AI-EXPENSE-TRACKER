@@ -1,9 +1,40 @@
 import { Expense } from '../types';
 
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-IN', {
+const DEFAULT_CURRENCY = 'INR';
+
+const currencyLocales: Record<string, string> = {
+  INR: 'en-IN',
+  USD: 'en-US',
+  EUR: 'en-IE',
+  GBP: 'en-GB',
+  JPY: 'ja-JP',
+  CNY: 'zh-CN',
+  AUD: 'en-AU',
+  CAD: 'en-CA',
+};
+
+let preferredCurrency = localStorage.getItem('currency') || DEFAULT_CURRENCY;
+
+export const getPreferredCurrency = (): string => preferredCurrency;
+
+export const setPreferredCurrency = (currency: string): void => {
+  preferredCurrency = currency;
+  localStorage.setItem('currency', currency);
+};
+
+export const getCurrencySymbol = (currency: string = preferredCurrency): string => {
+  const parts = new Intl.NumberFormat(currencyLocales[currency] || 'en-US', {
     style: 'currency',
-    currency: 'INR',
+    currency,
+    maximumFractionDigits: 0,
+  }).formatToParts(0);
+  return parts.find((part) => part.type === 'currency')?.value || currency;
+};
+
+export const formatCurrency = (amount: number, currency: string = preferredCurrency): string => {
+  return new Intl.NumberFormat(currencyLocales[currency] || 'en-US', {
+    style: 'currency',
+    currency,
     maximumFractionDigits: 2
   }).format(amount);
 };

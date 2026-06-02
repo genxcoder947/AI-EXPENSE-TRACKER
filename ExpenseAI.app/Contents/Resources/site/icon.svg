@@ -1,0 +1,50 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#EC4899;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06B6D4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#F472B6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A78BFA;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background with gradient -->
+  <rect width="512" height="512" rx="120" fill="url(#grad1)"/>
+  
+  <!-- Stylized wallet/money bag -->
+  <g filter="url(#glow)">
+    <!-- Main wallet shape -->
+    <path d="M128 160 L384 160 L384 352 C384 376 364 396 340 396 L172 396 C148 396 128 376 128 352 L128 160 Z" fill="white" opacity="0.95"/>
+    
+    <!-- Wallet flap -->
+    <path d="M128 160 L384 160 L384 200 C384 224 364 244 340 244 L172 244 C148 244 128 224 128 200 L128 160 Z" fill="url(#grad2)" opacity="0.8"/>
+    
+    <!-- Dollar sign -->
+    <text x="256" y="320" font-family="Arial Black, sans-serif" font-size="140" font-weight="900" fill="url(#grad1)" text-anchor="middle">$</text>
+    
+    <!-- Sparkle effects -->
+    <circle cx="100" cy="120" r="20" fill="#FBBF24" opacity="0.9"/>
+    <circle cx="412" cy="100" r="15" fill="#34D399" opacity="0.9"/>
+    <circle cx="420" cy="380" r="18" fill="#F472B6" opacity="0.9"/>
+    <circle cx="90" cy="380" r="12" fill="#60A5FA" opacity="0.9"/>
+    
+    <!-- Small sparkles -->
+    <path d="M380 140 L385 145 L390 140 L385 135 Z" fill="white" opacity="0.8"/>
+    <path d="M120 340 L125 345 L130 340 L125 335 Z" fill="white" opacity="0.8"/>
+    <path d="M400 250 L405 255 L410 250 L405 245 Z" fill="white" opacity="0.8"/>
+  </g>
+  
+  <!-- AI badge -->
+  <circle cx="380" cy="380" r="50" fill="url(#grad2)" opacity="0.9"/>
+  <text x="380" y="395" font-family="Arial Black, sans-serif" font-size="36" font-weight="900" fill="white" text-anchor="middle">AI</text>
+</svg>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User, ThumbsUp, ThumbsDown, Copy, Sparkles, Lightbulb, TrendingUp, AlertCircle, Clock, ChevronDown, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { Expense, Income } from '../types';
+import { formatCurrency } from '../utils/helpers';
 
 // Type declarations for Web Speech API
 declare global {
@@ -86,9 +87,9 @@ class LocalAI {
     const savingsRate = totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : '0';
 
     let insights = `📊 **Financial Overview**\n\n`;
-    insights += `• Total Income: ₹${totalIncome.toFixed(2)}\n`;
-    insights += `• Total Expenses: ₹${totalExpenses.toFixed(2)}\n`;
-    insights += `• Net Savings: ₹${netSavings.toFixed(2)} (${savingsRate}%)\n`;
+    insights += `• Total Income: ${formatCurrency(totalIncome)}\n`;
+    insights += `• Total Expenses: ${formatCurrency(totalExpenses)}\n`;
+    insights += `• Net Savings: ${formatCurrency(netSavings)} (${savingsRate}%)\n`;
     insights += `• Total Transactions: ${expenses.length + income.length}\n\n`;
 
     if (expenses.length > 0) {
@@ -98,7 +99,7 @@ class LocalAI {
       });
       
       const topCategory = Array.from(categoryTotals.entries()).sort((a, b) => b[1] - a[1])[0];
-      insights += `� **Top Spending Category**: ${topCategory[0]} (₹${topCategory[1].toFixed(2)})\n`;
+      insights += `� **Top Spending Category**: ${topCategory[0]} (${formatCurrency(topCategory[1])})\n`;
     }
 
     if (income.length > 0) {
@@ -108,7 +109,7 @@ class LocalAI {
       });
       
       const topIncome = Array.from(incomeCategories.entries()).sort((a, b) => b[1] - a[1])[0];
-      insights += `� **Top Income Source**: ${topIncome[0]} (₹${topIncome[1].toFixed(2)})\n`;
+      insights += `� **Top Income Source**: ${topIncome[0]} (${formatCurrency(topIncome[1])})\n`;
     }
 
     return insights;
@@ -155,7 +156,7 @@ class LocalAI {
       const icon = t.type === 'income' ? '💰' : '💸';
       const sign = t.type === 'income' ? '+' : '-';
       history += `${index + 1}. ${icon} ${t.description}\n`;
-      history += `   ${sign}₹${t.amount.toFixed(2)} • ${t.category} • ${t.date}\n\n`;
+      history += `   ${sign}${formatCurrency(t.amount)} • ${t.category} • ${t.date}\n\n`;
     });
     
     if (transactions.length >= limit) {
@@ -209,7 +210,7 @@ class LocalAI {
       const icon = t.type === 'income' ? '💰' : '💸';
       const sign = t.type === 'income' ? '+' : '-';
       history += `${index + 1}. ${icon} ${t.description}\n`;
-      history += `   ${sign}₹${t.amount.toFixed(2)} • ${t.category} • ${t.date}\n\n`;
+      history += `   ${sign}${formatCurrency(t.amount)} • ${t.category} • ${t.date}\n\n`;
     });
     
     return history;
@@ -226,7 +227,7 @@ class LocalAI {
     
     // Income Details
     analysis += `💰 **INCOME BREAKDOWN**\n`;
-    analysis += `• Total Income: ₹${totalIncome.toFixed(2)}\n`;
+    analysis += `• Total Income: ${formatCurrency(totalIncome)}\n`;
     analysis += `• Income Entries: ${income.length}\n`;
     if (income.length > 0) {
       const avgIncome = totalIncome / income.length;
@@ -235,10 +236,10 @@ class LocalAI {
       const minIncome = sortedIncome[sortedIncome.length - 1]?.amount || 0;
       const incomeRange = maxIncome - minIncome;
       
-      analysis += `• Average Income: ₹${avgIncome.toFixed(2)}\n`;
-      analysis += `• Highest Income: ₹${maxIncome.toFixed(2)}\n`;
-      analysis += `• Lowest Income: ₹${minIncome.toFixed(2)}\n`;
-      analysis += `• Income Range: ₹${incomeRange.toFixed(2)}\n`;
+      analysis += `• Average Income: ${formatCurrency(avgIncome)}\n`;
+      analysis += `• Highest Income: ${formatCurrency(maxIncome)}\n`;
+      analysis += `• Lowest Income: ${formatCurrency(minIncome)}\n`;
+      analysis += `• Income Range: ${formatCurrency(incomeRange)}\n`;
       
       const incomeCategories = new Map<string, number>();
       income.forEach(i => {
@@ -249,14 +250,14 @@ class LocalAI {
       analysis += `• Income Sources: ${sortedIncomeCategories.length} categories\n`;
       sortedIncomeCategories.forEach((cat, index) => {
         const percentage = totalIncome > 0 ? ((cat[1] / totalIncome) * 100).toFixed(1) : '0';
-        analysis += `  ${index + 1}. ${cat[0]}: ₹${cat[1].toFixed(2)} (${percentage}%)\n`;
+        analysis += `  ${index + 1}. ${cat[0]}: ${formatCurrency(cat[1])} (${percentage}%)\n`;
       });
     }
     analysis += `\n`;
     
     // Expense Details
     analysis += `💸 **EXPENSE BREAKDOWN**\n`;
-    analysis += `• Total Expenses: ₹${totalExpenses.toFixed(2)}\n`;
+    analysis += `• Total Expenses: ${formatCurrency(totalExpenses)}\n`;
     analysis += `• Expense Entries: ${expenses.length}\n`;
     if (expenses.length > 0) {
       const avgExpense = totalExpenses / expenses.length;
@@ -265,10 +266,10 @@ class LocalAI {
       const minExpense = sortedExpenses[sortedExpenses.length - 1]?.amount || 0;
       const expenseRange = maxExpense - minExpense;
       
-      analysis += `• Average Expense: ₹${avgExpense.toFixed(2)}\n`;
-      analysis += `• Highest Expense: ₹${maxExpense.toFixed(2)}\n`;
-      analysis += `• Lowest Expense: ₹${minExpense.toFixed(2)}\n`;
-      analysis += `• Expense Range: ₹${expenseRange.toFixed(2)}\n`;
+      analysis += `• Average Expense: ${formatCurrency(avgExpense)}\n`;
+      analysis += `• Highest Expense: ${formatCurrency(maxExpense)}\n`;
+      analysis += `• Lowest Expense: ${formatCurrency(minExpense)}\n`;
+      analysis += `• Expense Range: ${formatCurrency(expenseRange)}\n`;
       
       const categoryTotals = new Map<string, number>();
       expenses.forEach(e => {
@@ -279,24 +280,24 @@ class LocalAI {
       analysis += `• Spending Categories: ${sortedCategories.length} categories\n`;
       sortedCategories.forEach((cat, index) => {
         const percentage = totalExpenses > 0 ? ((cat[1] / totalExpenses) * 100).toFixed(1) : '0';
-        analysis += `  ${index + 1}. ${cat[0]}: ₹${cat[1].toFixed(2)} (${percentage}%)\n`;
+        analysis += `  ${index + 1}. ${cat[0]}: ${formatCurrency(cat[1])} (${percentage}%)\n`;
       });
     }
     analysis += `\n`;
     
     // Savings Details
     analysis += `💎 **SAVINGS ANALYSIS**\n`;
-    analysis += `• Net Savings: ₹${netSavings.toFixed(2)}\n`;
+    analysis += `• Net Savings: ${formatCurrency(netSavings)}\n`;
     analysis += `• Savings Rate: ${savingsRate}%\n`;
     if (totalIncome > 0) {
       const recommendedSavings = totalIncome * 0.2;
       const emergencyFund = totalExpenses * 6;
-      analysis += `• Recommended Savings (20%): ₹${recommendedSavings.toFixed(2)}\n`;
-      analysis += `• Emergency Fund (6 months expenses): ₹${emergencyFund.toFixed(2)}\n`;
+      analysis += `• Recommended Savings (20%): ${formatCurrency(recommendedSavings)}\n`;
+      analysis += `• Emergency Fund (6 months expenses): ${formatCurrency(emergencyFund)}\n`;
       if (netSavings >= recommendedSavings) {
         analysis += `• Status: ✅ Exceeding recommended savings\n`;
       } else if (netSavings > 0) {
-        analysis += `• Status: ⚠️ Below recommended savings by ₹${(recommendedSavings - netSavings).toFixed(2)}\n`;
+        analysis += `• Status: ⚠️ Below recommended savings by ${formatCurrency(recommendedSavings - netSavings)}\n`;
       } else {
         analysis += `• Status: ❌ Negative savings (spending more than earning)\n`;
       }
@@ -331,19 +332,19 @@ class LocalAI {
         const yearlyProjectedExpense = dailyAvgExpense * 365;
         const yearlyProjectedIncome = dailyAvgIncome * 365;
         
-        analysis += `• Daily Average Expense: ₹${dailyAvgExpense.toFixed(2)}\n`;
-        analysis += `• Daily Average Income: ₹${dailyAvgIncome.toFixed(2)}\n`;
-        analysis += `• Weekly Average Expense: ₹${weeklyAvgExpense.toFixed(2)}\n`;
-        analysis += `• Weekly Average Income: ₹${weeklyAvgIncome.toFixed(2)}\n`;
-        analysis += `• Monthly Projected Expense: ₹${monthlyProjectedExpense.toFixed(2)}\n`;
-        analysis += `• Monthly Projected Income: ₹${monthlyProjectedIncome.toFixed(2)}\n`;
-        analysis += `• Yearly Projected Expense: ₹${yearlyProjectedExpense.toFixed(2)}\n`;
-        analysis += `• Yearly Projected Income: ₹${yearlyProjectedIncome.toFixed(2)}\n`;
+        analysis += `• Daily Average Expense: ${formatCurrency(dailyAvgExpense)}\n`;
+        analysis += `• Daily Average Income: ${formatCurrency(dailyAvgIncome)}\n`;
+        analysis += `• Weekly Average Expense: ${formatCurrency(weeklyAvgExpense)}\n`;
+        analysis += `• Weekly Average Income: ${formatCurrency(weeklyAvgIncome)}\n`;
+        analysis += `• Monthly Projected Expense: ${formatCurrency(monthlyProjectedExpense)}\n`;
+        analysis += `• Monthly Projected Income: ${formatCurrency(monthlyProjectedIncome)}\n`;
+        analysis += `• Yearly Projected Expense: ${formatCurrency(yearlyProjectedExpense)}\n`;
+        analysis += `• Yearly Projected Income: ${formatCurrency(yearlyProjectedIncome)}\n`;
         
         const monthlyNetSavings = monthlyProjectedIncome - monthlyProjectedExpense;
         const yearlyNetSavings = yearlyProjectedIncome - yearlyProjectedExpense;
-        analysis += `• Monthly Projected Savings: ₹${monthlyNetSavings.toFixed(2)}\n`;
-        analysis += `• Yearly Projected Savings: ₹${yearlyNetSavings.toFixed(2)}\n`;
+        analysis += `• Monthly Projected Savings: ${formatCurrency(monthlyNetSavings)}\n`;
+        analysis += `• Yearly Projected Savings: ${formatCurrency(yearlyNetSavings)}\n`;
       }
     }
 
@@ -521,7 +522,7 @@ class LocalAI {
     if (this.fuzzyMatch(input, ['expense', 'spent', 'cost'])) {
       const totalExpenses = this.financialContext.expenses.reduce((sum, e) => sum + e.amount, 0);
       return {
-        response: `💰 You've spent ₹${totalExpenses.toFixed(2)} in total across ${this.financialContext.expenses.length} expense entries.\n\n${this.financialContext.expenses.length > 0 ? 'Would you like to see a breakdown by category?' : 'Add some expenses to start tracking!'}`,
+        response: `💰 You've spent ${formatCurrency(totalExpenses)} in total across ${this.financialContext.expenses.length} expense entries.\n\n${this.financialContext.expenses.length > 0 ? 'Would you like to see a breakdown by category?' : 'Add some expenses to start tracking!'}`,
         quickActions: ['View expense breakdown', 'Add expense', 'View history']
       };
     }
@@ -530,7 +531,7 @@ class LocalAI {
     if (this.fuzzyMatch(input, ['income', 'earn', 'salary', 'revenue'])) {
       const totalIncome = this.financialContext.income.reduce((sum, i) => sum + i.amount, 0);
       return {
-        response: `💵 You've earned ₹${totalIncome.toFixed(2)} in total across ${this.financialContext.income.length} income entries.\n\n${this.financialContext.income.length > 0 ? 'Your income helps you track your financial health!' : 'Add some income entries to start tracking!'}`,
+        response: `💵 You've earned ${formatCurrency(totalIncome)} in total across ${this.financialContext.income.length} income entries.\n\n${this.financialContext.income.length > 0 ? 'Your income helps you track your financial health!' : 'Add some income entries to start tracking!'}`,
         quickActions: ['View income breakdown', 'Add income', 'View income history']
       };
     }
@@ -543,7 +544,7 @@ class LocalAI {
       const savingsRate = totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : '0';
       
       return {
-        response: `💎 Your net savings: ₹${netSavings.toFixed(2)}\n\nSavings rate: ${savingsRate}%\n\n${netSavings > 0 ? '🎉 Great job saving money!' : netSavings < 0 ? '⚠️ You\'re spending more than you earn. Consider reviewing your expenses.' : '📊 You\'re breaking even. Try to save at least 20% of your income.'}`,
+        response: `💎 Your net savings: ${formatCurrency(netSavings)}\n\nSavings rate: ${savingsRate}%\n\n${netSavings > 0 ? '🎉 Great job saving money!' : netSavings < 0 ? '⚠️ You\'re spending more than you earn. Consider reviewing your expenses.' : '📊 You\'re breaking even. Try to save at least 20% of your income.'}`,
         quickActions: ['View spending tips', 'Set savings goal', 'Analyze expenses']
       };
     }

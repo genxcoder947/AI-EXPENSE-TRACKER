@@ -31,6 +31,22 @@ The backend stores:
 - login sessions
 - expenses per user
 
+## Password Reset Email
+
+Password reset uses a 6-digit code. If SMTP is configured, the code is sent to the user's email address and is not returned by the API. If SMTP is not configured, the local development app shows the code on screen.
+
+Set these environment variables before starting the backend:
+
+```bash
+export EMAIL_ADDRESS="you@example.com"
+export EMAIL_PASSWORD="your-smtp-or-app-password"
+export SMTP_SERVER="smtp.gmail.com"
+export SMTP_PORT="587"
+export EMAIL_USE_TLS="true"
+```
+
+For Gmail, use an app password instead of your normal account password.
+
 ## Useful Commands
 
 ```bash

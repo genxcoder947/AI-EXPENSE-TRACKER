@@ -6,6 +6,7 @@ import { ArrowUpRight, Calendar, Sparkles, TrendingUp, X } from 'lucide-react';
 
 interface StatsOverviewProps {
   expenses: Expense[];
+  currency: string;
 }
 
 type StatDetail = 'total' | 'month' | 'ai';
@@ -16,7 +17,7 @@ const detailTitles: Record<StatDetail, string> = {
   ai: 'AI categorized details',
 };
 
-export function StatsOverview({ expenses }: StatsOverviewProps) {
+export function StatsOverview({ expenses, currency }: StatsOverviewProps) {
   const [activeDetail, setActiveDetail] = useState<StatDetail | null>(null);
   const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
   
@@ -53,7 +54,7 @@ export function StatsOverview({ expenses }: StatsOverviewProps) {
     {
       id: 'total' as const,
       label: 'Total Spent',
-      value: formatCurrency(totalSpent),
+      value: formatCurrency(totalSpent, currency),
       helper: topCategory ? `Top category: ${topCategory[0]}` : 'No spending yet',
       icon: TrendingUp,
       color: 'from-emerald-500 to-emerald-600',
@@ -62,7 +63,7 @@ export function StatsOverview({ expenses }: StatsOverviewProps) {
     {
       id: 'month' as const,
       label: 'This Month',
-      value: formatCurrency(thisMonthTotal),
+      value: formatCurrency(thisMonthTotal, currency),
       helper: `${thisMonthExpenses.length} expenses this month`,
       icon: Calendar,
       color: 'from-blue-500 to-blue-600',
@@ -127,7 +128,7 @@ export function StatsOverview({ expenses }: StatsOverviewProps) {
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">{detailTitles[activeDetail]}</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  {detailExpenses.length} expense{detailExpenses.length === 1 ? '' : 's'} · {formatCurrency(detailTotal)} total · {formatCurrency(detailAverage)} average
+                  {detailExpenses.length} expense{detailExpenses.length === 1 ? '' : 's'} · {formatCurrency(detailTotal, currency)} total · {formatCurrency(detailAverage, currency)} average
                 </p>
               </div>
               <button
@@ -154,11 +155,13 @@ export function StatsOverview({ expenses }: StatsOverviewProps) {
                         {expense.category} · {formatDate(expense.date)}
                       </p>
                       {expense.notes && (
-                        <p className="mt-1 text-xs leading-relaxed text-slate-500">{expense.notes}</p>
+                        <p className="mt-2 whitespace-pre-wrap rounded-md bg-slate-50 px-2 py-1.5 font-mono text-xs leading-relaxed text-slate-600">
+                          {expense.notes}
+                        </p>
                       )}
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="font-semibold text-slate-900">{formatCurrency(expense.amount)}</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(expense.amount, currency)}</p>
                       {expense.aiSuggested && (
                         <p className="mt-1 text-xs font-medium text-emerald-600">AI categorized</p>
                       )}

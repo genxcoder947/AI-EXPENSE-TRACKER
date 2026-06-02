@@ -9,7 +9,7 @@ import { InsightsPanel } from './components/InsightsPanel';
 import { SpendingChart } from './components/SpendingChart';
 import { StatsOverview } from './components/StatsOverview';
 import { generateInsights, calculateCategoryTotals } from './utils/aiEngine';
-import { sortExpensesByDate } from './utils/helpers';
+import { getPreferredCurrency, setPreferredCurrency, sortExpensesByDate } from './utils/helpers';
 import { CategoryPieChart } from './components/CategoryPieChart';
 import { Sparkles, Moon, Sun } from 'lucide-react';
 import Login from './components/auth/Login';
@@ -46,11 +46,17 @@ export default function App() {
   const [appError, setAppError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [currency, setCurrency] = useState(getPreferredCurrency);
 
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
     return saved === 'dark';
   });
+
+  const handleCurrencyChange = (newCurrency: string) => {
+    setPreferredCurrency(newCurrency);
+    setCurrency(newCurrency);
+  };
 
   useEffect(() => {
     if (darkMode) {
@@ -275,12 +281,12 @@ export default function App() {
             <>
               {/* Stats Overview */}
               <div className="mb-8">
-                <StatsOverview expenses={expenses} />
+                <StatsOverview expenses={expenses} currency={currency} />
               </div>
 
               {/* Income Overview */}
               <div className="mb-8">
-                <IncomeOverview income={income} />
+                <IncomeOverview income={income} currency={currency} />
               </div>
 
               {/* Main Grid */}
@@ -372,6 +378,8 @@ export default function App() {
                 incomeCount={income.length}
                 isDarkMode={darkMode}
                 onLogout={() => void handleLogout()}
+                onCurrencyChange={handleCurrencyChange}
+                currentCurrency={currency}
               />
             </div>
           )}

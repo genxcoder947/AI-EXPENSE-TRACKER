@@ -1,3 +1,5 @@
+import { formatCurrency } from './helpers';
+
 export interface ParsedReceipt {
   amount: number | null;
   description: string;
@@ -14,7 +16,7 @@ export interface ReceiptLineItem {
 }
 
 const TOTAL_LINE_HINTS =
-  /grand\s*total|total\s*payable|amount\s*paid|total\s*paid|total\s*amount|to\s*pay|pay\s*now|bill\s*total|order\s*total|^total\s*[:.]?\s*$/i;
+  /grand\s*total|total\s*payable|amount\s*paid|total\s*paid|total\s*amount|to\s*pay|pay\s*now|bill\s*total|order\s*total|^total\s*[:.]?\s*$|^total\b\s*[:.-]?\s*(?:₹|rs\.?|inr|\$)?\s*[0-9OoQDIl|SsBb,\.\s]+(?:\/-)?\s*$/i;
 const WEAK_TOTAL_HINTS = /\btotal\b|payable|subtotal/i;
 const NEGATIVE_LINE_HINTS =
   /saved\s|you\s+saved|discount|cashback|delivery\s*fee|platform\s*fee|packaging|gst\s*breakup|tax\s*summary/i;
@@ -24,6 +26,13 @@ const DATE_OR_TIME_HINTS =
   /\b(?:date|time|invoice|bill\s*no|order\s*id|order\s*no|token|phone|mobile|address|fssai)\b/i;
 const DATE_OR_TIME_VALUE =
   /\b(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}:\d{2}(?::\d{2})?)\b/;
+const MONTH_NAME_VALUE =
+  /\b\d{1,2}\s*(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)\b/i;
+const PIN_CODE_VALUE = /\b[1-9]\d{5}\b/;
+const ADDRESS_CONTEXT_HINTS =
+  /\b(?:pin|pincode|postal|zip|road|rd|street|st|lane|ln|avenue|ave|nagar|colony|area|city|district|state|chennai|bengaluru|bangalore|mumbai|delhi|hyderabad|pune|kolkata|kochi|coimbatore|madurai|tamil\s*nadu|karnataka|kerala|maharashtra)\b/i;
+const MERCHANT_REJECT_HINTS =
+  /invoice|receipt|bill|order|token|date|time|phone|mobile|address|gst|tax|fssai|cashier|payment|total|subtotal|amount|qty|quantity|item|price|rate|thank/i;
 
 function normalizeReceiptText(raw: string): string {
   return raw
@@ -90,6 +99,28 @@ function parseMoneyToken(s: string): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+function isBarePinCodeToken(token: string): boolean {
+  const cleaned = normalizeNumberToken(token);
+  return /^[1-9]\d{5}$/.test(cleaned);
+}
+
+function isDateOrTimeLine(line: string): boolean {
+  return (
+    DATE_OR_TIME_VALUE.test(line) ||
+    MONTH_NAME_VALUE.test(line) ||
+    /\b(?:date|dte|ate|time)\s*[:.-]?\s*\d{1,2}\b/i.test(line)
+  );
+}
+
+function isAddressOrPinLine(line: string): boolean {
+  return PIN_CODE_VALUE.test(line) && (ADDRESS_CONTEXT_HINTS.test(line) || !/(?:₹|\$|rs\.?|inr)/i.test(line));
+}
+
+function shouldIgnoreMoneyLine(line: string): boolean {
+  if (TOTAL_LINE_HINTS.test(line) || WEAK_TOTAL_HINTS.test(line)) return false;
+  return isDateOrTimeLine(line) || isAddressOrPinLine(line);
+}
+
 function normalizeForMerchant(text: string): string {
   // OCR often swaps similar-looking characters. Normalize common confusions.
   // Keep it simple—this just helps merchant detection for receipts/screenshots.
@@ -108,6 +139,7 @@ function normalizeForMerchant(text: string): string {
 
 function extractAmountsFromLine(line: string): number[] {
   const out: number[] = [];
+  if (shouldIgnoreMoneyLine(line)) return out;
   const hasDateOrTimeValue = DATE_OR_TIME_VALUE.test(line);
   const rupee =
     /(?:₹|rs\.?\s*|inr\s*|r\s*s\s*)([0-9OoQDIl|SsBb,\.\s]{1,18}(?:\/-)?)\b/gi;
@@ -128,6 +160,7 @@ function extractAmountsFromLine(line: string): number[] {
       for (const t of loose) {
         if (hasDateOrTimeValue && line.includes(t)) continue;
         if (DATE_OR_TIME_HINTS.test(line) && !WEAK_TOTAL_HINTS.test(line)) continue;
+        if (isBarePinCodeToken(t)) continue;
         const v = parseMoneyToken(t);
         if (v !== null && v >= 10) out.push(v); // skip years like 2024 unless large context
       }
@@ -137,6 +170,7 @@ function extractAmountsFromLine(line: string): number[] {
 }
 
 function extractTrailingAmount(line: string): { amount: number; label: string; hadCurrency: boolean } | null {
+  if (shouldIgnoreMoneyLine(line)) return null;
   // Try currency symbol first (most reliable)
   const currencyMatch = line.match(/^(.*?)(?:₹|rs\.?\s*|inr\s*|r\s*s\s*)([0-9OoQDIl|SsBb,\.\s]{1,18}(?:\/-)?)\s*$/i);
   if (currencyMatch) {
@@ -176,6 +210,27 @@ function extractTrailingAmount(line: string): { amount: number; label: string; h
   return null;
 }
 
+function extractLeadingAmount(line: string): { amount: number; label: string; hadCurrency: boolean } | null {
+  if (shouldIgnoreMoneyLine(line)) return null;
+  const currencyMatch = line.match(/^\s*(?:₹|rs\.?\s*|inr\s*|r\s*s\s*)([0-9OoQDIl|SsBb,\.\s]{1,18}(?:\/-)?)\s+(.+)$/i);
+  if (currencyMatch) {
+    const amount = parseMoneyToken(currencyMatch[1]);
+    if (amount !== null && amount >= 1 && amount <= 50_000) {
+      return { amount, label: currencyMatch[2], hadCurrency: true };
+    }
+  }
+
+  const decimalMatch = line.match(/^\s*([0-9OoQDIl|SsBb,]+[.,][0-9OoQDIl|SsBb]{1,2}|[0-9OoQDIl|SsBb]{2,5}\/-)\s+(.+)$/);
+  if (decimalMatch) {
+    const amount = parseMoneyToken(decimalMatch[1]);
+    if (amount !== null && amount >= 1 && amount <= 50_000) {
+      return { amount, label: decimalMatch[2], hadCurrency: false };
+    }
+  }
+
+  return null;
+}
+
 function cleanItemLabel(raw: string): string {
   return raw
     .replace(/(?:₹|rs\.?\s*|inr\s*|r\s*s\s*)\s*[0-9OoQDIl|SsBb,\.\s]+(?:\/-)?/gi, ' ')
@@ -187,8 +242,10 @@ function cleanItemLabel(raw: string): string {
 
 function cleanItemName(raw: string): string {
   return cleanItemLabel(raw)
+    .replace(/^\s*(?:item|name|product|description)\s*[:.-]?\s*/i, ' ')
     .replace(/\b(?:qty|quantity|nos?|pcs?|pieces?)\s*[:x-]?\s*\d+\b/gi, ' ')
     .replace(/\b\d+\s*(?:pcs?|pieces?|nos?)\b/gi, ' ')
+    .replace(/\b(?:mrp|rate|price|amt|amount)\b/gi, ' ')
     .replace(/\s+\d{1,2}\s*$/g, ' ')
     .replace(/^[\s*#.:;-]+|[\s*#.:;-]+$/g, '')
     .replace(/\s{2,}/g, ' ')
@@ -230,6 +287,7 @@ function isLikelyItemName(name: string): boolean {
   if (name.length < 2 || name.length > 80) return false;
   if (!/[a-z]/i.test(name)) return false;
   if (NON_ITEM_LINE_HINTS.test(name)) return false;
+  if (isDateOrTimeLine(name) || isAddressOrPinLine(name)) return false;
   if (/^\d+(?:\.\d+)?$/.test(name)) return false;
   
   // Filter out address-like patterns
@@ -271,13 +329,13 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
   let pendingAmount: number | null = null;
 
   for (const line of lines) {
-    if (TOTAL_LINE_HINTS.test(line) || WEAK_TOTAL_HINTS.test(line)) {
+    if (TOTAL_LINE_HINTS.test(line) || WEAK_TOTAL_HINTS.test(line) || shouldIgnoreMoneyLine(line)) {
       pendingName = null;
       pendingAmount = null;
       continue;
     }
 
-    const trailing = extractTrailingAmount(line);
+    const trailing = extractTrailingAmount(line) || extractLeadingAmount(line);
 
     if (trailing) {
       const rawName = cleanItemLabel(trailing.label);
@@ -350,36 +408,43 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
       seen.add(key);
       return true;
     })
-    .slice(0, 12);
+    .slice(0, 15);
 }
 
 function formatReceiptAmount(amount: number): string {
-  return `₹${amount.toFixed(2)}`;
+  return formatCurrency(amount);
 }
 
 function buildReceiptNotes(items: ReceiptLineItem[], total: number | null): string {
   if (items.length === 0) return '';
 
   const orderedCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
-  const itemLines = items.map((item, index) => {
+  const itemLines = items.slice(0, 12).map((item, index) => {
     const quantity = item.quantity && item.quantity > 1 ? `${item.quantity} x ` : '';
     const unitPrice = item.quantity && item.quantity > 1 
       ? ` (${formatReceiptAmount(item.amount / item.quantity)} each)` 
       : '';
-    return `${index + 1}. ${quantity}${item.name}${unitPrice} = ${formatReceiptAmount(item.amount)}`;
+    return `${index + 1}. ${quantity}${item.name}${unitPrice} - ${formatReceiptAmount(item.amount)}`;
   });
+  const remaining = items.length > itemLines.length ? items.length - itemLines.length : 0;
 
-  return [
-    `📋 Scanned Receipt Details`,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `📦 Items ordered: ${orderedCount}`,
-    ``,
+  const notes = [
+    `Scanned receipt items (${orderedCount}):`,
     ...itemLines,
-    ``,
-    ...(total !== null ? [`💰 Receipt total: ${formatReceiptAmount(total)}`] : []),
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `⚠️ Please verify all details before saving`
+    ...(remaining > 0 ? [`...and ${remaining} more item${remaining === 1 ? '' : 's'}`] : []),
+    ...(total !== null ? [`Receipt total: ${formatReceiptAmount(total)}`] : []),
+    `Verify item names and prices before saving.`
   ].join('\n');
+
+  if (notes.length <= 700) return notes;
+
+  const compactLines = itemLines.slice(0, 8);
+  return [
+    `Scanned receipt items (${orderedCount}):`,
+    ...compactLines,
+    `...review receipt for remaining items`,
+    ...(total !== null ? [`Receipt total: ${formatReceiptAmount(total)}`] : []),
+  ].join('\n').slice(0, 700);
 }
 
 function countOrderedItems(items: ReceiptLineItem[]): number {
@@ -408,11 +473,32 @@ function buildReceiptDescription(merchant: string | null, items: ReceiptLineItem
       return `${quantity}${cleanItemName(item.name)}`;
     });
     const suffix = items.length > itemSummary.length ? ` +${items.length - itemSummary.length} more` : '';
-    const description = `${merchant ? `${merchant}: ` : ''}${itemSummary.join(', ')}${suffix}`;
+    const description = `${merchant ? `${merchant}: ` : ''}${itemSummary.filter(Boolean).join(', ')}${suffix}`;
     return description.length > 95 ? `${description.slice(0, 92).trim()}...` : description;
   }
 
   return merchant ? `${merchant} order` : 'Receipt / bill';
+}
+
+function cleanMerchantName(line: string): string {
+  return line
+    .replace(/(?:₹|rs\.?|inr|\$).*/gi, '')
+    .replace(/[^a-z0-9&'(). -]/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function isLikelyMerchantLine(line: string): boolean {
+  const cleaned = cleanMerchantName(line);
+  if (cleaned.length < 3 || cleaned.length > 48) return false;
+  if (!/[a-z]/i.test(cleaned)) return false;
+  if (MERCHANT_REJECT_HINTS.test(cleaned)) return false;
+  if (DATE_OR_TIME_VALUE.test(cleaned)) return false;
+  if (/^\d/.test(cleaned)) return false;
+  const letters = (cleaned.match(/[a-z]/gi) || []).length;
+  const digits = (cleaned.match(/\d/g) || []).length;
+  return letters >= 3 && digits <= letters;
 }
 
 function lineScore(line: string): number {
@@ -433,7 +519,9 @@ function detectMerchant(text: string): string | null {
   if (n.includes('uber eats') || n.includes('ubereats')) return 'Uber Eats';
   if (n.includes('doordash')) return 'DoorDash';
   if (n.includes('dominos') || n.includes('domino')) return "Domino's";
-  return null;
+  const lines = normalizeReceiptText(text).split('\n').map((l) => l.trim()).filter(Boolean);
+  const topMerchantLine = lines.slice(0, 8).find(isLikelyMerchantLine);
+  return topMerchantLine ? cleanMerchantName(topMerchantLine) : null;
 }
 
 /** Turn noisy OCR text into amount + description; user should always verify. */

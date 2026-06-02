@@ -12,6 +12,7 @@ import {
   Edit,
 } from 'lucide-react';
 import { parseReceiptText } from '../utils/receiptParser';
+import { getCurrencySymbol } from '../utils/helpers';
 
 export interface ReceiptScanResult {
   description: string;
@@ -78,6 +79,7 @@ async function preprocessImageForOcr(file: File): Promise<Blob | File> {
 }
 
 export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
+  const currencySymbol = getCurrencySymbol();
   const galleryInputId = useId();
   const cameraInputId = useId();
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -609,7 +611,7 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Amount (₹)
+                  Amount ({currencySymbol})
                 </label>
                 <Input
                   type="number"
@@ -628,9 +630,14 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full min-h-[150px] px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Itemized list will appear here..."
+                  maxLength={700}
+                  rows={8}
+                  className="w-full min-h-[190px] px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Scanned item names and prices will appear here..."
                 />
+                <div className="mt-1 text-right text-[11px] text-slate-400">
+                  {editNotes.length}/700
+                </div>
               </div>
             </div>
 

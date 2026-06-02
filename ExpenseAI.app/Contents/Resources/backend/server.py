@@ -9,11 +9,14 @@ import mimetypes
 import os
 import re
 import secrets
+import smtplib
 import sqlite3
 import sys
 import traceback
 import uuid
 from datetime import UTC, datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -23,8 +26,18 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "backend" / "data" / "expenseai.sqlite3"
+EMAIL_CONFIG = {
+    'smtp_server': os.environ.get('SMTP_SERVER', 'smtp.gmail.com'),
+    'smtp_port': int(os.environ.get('SMTP_PORT', '587')),
+    'email': os.environ.get('EMAIL_ADDRESS', ''),
+    'password': os.environ.get('EMAIL_PASSWORD', ''),
+    'use_tls': os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true',
+    'use_ssl': os.environ.get('EMAIL_USE_SSL', 'false').lower() == 'true',
+    'from_name': os.environ.get('EMAIL_FROM_NAME', 'ExpenseAI'),
+}
 SESSION_DAYS = 30
 RESET_HOURS = 1
+SMTP_TIMEOUT_SECONDS = 15
 MAX_JSON_BYTES = 1024 * 1024
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -32,6 +45,81 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def generate_reset_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def normalize_reset_code(code: str) -> str:
+    return code.strip().replace(" ", "").replace("-", "")
+
+
+def send_otp_email(to_email: str, otp: str) -> bool:
+    if not EMAIL_CONFIG['email'] or not EMAIL_CONFIG['password']:
+        return False
+
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'ExpenseAI password reset code'
+        msg['From'] = f"{EMAIL_CONFIG['from_name']} <{EMAIL_CONFIG['email']}>"
+        msg['To'] = to_email
+
+        text_content = f"""ExpenseAI password reset
+
+Your password reset code is: {otp}
+
+This code expires in {RESET_HOURS * 60} minutes. If you did not request this reset, you can ignore this email.
+"""
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center;">
+                <h1 style="color: white; margin: 0;">ExpenseAI</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Password Reset Request</p>
+            </div>
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 10px; margin-top: 20px;">
+                <p style="color: #333; font-size: 16px;">You requested a password reset for your ExpenseAI account.</p>
+                <p style="color: #333; font-size: 16px;">Your password reset code is:</p>
+                <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; border: 2px dashed #667eea;">
+                    <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 5px;">{otp}</span>
+                </div>
+                <p style="color: #666; font-size: 14px;">This code will expire in {RESET_HOURS * 60} minutes.</p>
+                <p style="color: #666; font-size: 14px;">If you didn't request this password reset, please ignore this email.</p>
+            </div>
+            <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                <p>This is an automated email from ExpenseAI. Please do not reply.</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(text_content, 'plain'))
+        msg.attach(MIMEText(html_content, 'html'))
+
+        if EMAIL_CONFIG['use_ssl']:
+            server = smtplib.SMTP_SSL(
+                EMAIL_CONFIG['smtp_server'],
+                EMAIL_CONFIG['smtp_port'],
+                timeout=SMTP_TIMEOUT_SECONDS,
+            )
+        else:
+            server = smtplib.SMTP(
+                EMAIL_CONFIG['smtp_server'],
+                EMAIL_CONFIG['smtp_port'],
+                timeout=SMTP_TIMEOUT_SECONDS,
+            )
+
+        with server:
+            if EMAIL_CONFIG['use_tls'] and not EMAIL_CONFIG['use_ssl']:
+                server.starttls()
+            server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
+            server.send_message(msg)
+
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
 
 
 def add_days(days: int) -> str:
@@ -365,8 +453,10 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
 
     def handle_forgot_password(self) -> None:
         email = self.clean_email(self.read_json())
+        email_enabled = bool(EMAIL_CONFIG['email'] and EMAIL_CONFIG['password'])
         response: dict[str, Any] = {
-            "message": "If an account exists for this email, use the reset code below to choose a new password.",
+            "message": "If an account exists for this email, a password reset code has been sent to your email address.",
+            "emailEnabled": email_enabled,
         }
 
         with self.db.connect() as conn:
@@ -378,7 +468,7 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
 
             user_id = int(user["id"])
             conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
-            reset_token = secrets.token_urlsafe(32)
+            reset_token = generate_reset_code()
             conn.execute(
                 """
                 INSERT INTO password_reset_tokens (token_hash, user_id, created_at, expires_at)
@@ -387,13 +477,25 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                 (hash_token(reset_token), user_id, now_iso(), add_hours(RESET_HOURS)),
             )
 
-        response["resetCode"] = reset_token
-        response["expiresInMinutes"] = RESET_HOURS * 60
+        if email_enabled:
+            email_sent = send_otp_email(email, reset_token)
+            if not email_sent:
+                with self.db.connect() as conn:
+                    conn.execute("DELETE FROM password_reset_tokens WHERE token_hash = ?", (hash_token(reset_token),))
+                raise ApiError(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    "Could not send the reset email. Check the SMTP settings and try again.",
+                )
+        else:
+            response["message"] = "Email not configured. Use the reset code below to choose a new password."
+            response["resetCode"] = reset_token
+            response["expiresInMinutes"] = RESET_HOURS * 60
+
         self.send_json(response)
 
     def handle_reset_password(self) -> None:
         data = self.read_json()
-        reset_token = str(data.get("token", "")).strip()
+        reset_token = normalize_reset_code(str(data.get("token", "")))
         password = str(data.get("password", ""))
 
         if not reset_token:

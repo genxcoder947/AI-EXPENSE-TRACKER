@@ -1,4 +1,5 @@
 import { Expense, CategoryTotal, Insight, AiSuggestion } from '../types';
+import { formatCurrency } from './helpers';
 
 const categoryKeywords: Record<string, string[]> = {
   'Food & Dining': [
@@ -288,7 +289,7 @@ export const generateInsights = (expenses: Expense[]): Insight[] => {
   const monthlyProjection = dailyAverage * 30;
   insights.push({
     type: 'info',
-    message: `Based on your spending velocity of ₹${dailyAverage.toFixed(2)}/day, you're projected to spend ₹${monthlyProjection.toFixed(0)} this month.`,
+    message: `Based on your spending velocity of ${formatCurrency(dailyAverage)}/day, you're projected to spend ${formatCurrency(monthlyProjection)} this month.`,
     icon: '📈'
   });
   
@@ -316,7 +317,7 @@ export const generateInsights = (expenses: Expense[]): Insight[] => {
     const highestAnomaly = highValueExpenses.sort((a, b) => b.amount - a.amount)[0];
     insights.push({
       type: 'warning',
-      message: `Unusual spending detected: ₹${highestAnomaly.amount.toFixed(2)} on ${highestAnomaly.description} is ${((highestAnomaly.amount / categoryAverages[highestAnomaly.category]) * 100).toFixed(0)}% above your ${highestAnomaly.category} average.`,
+      message: `Unusual spending detected: ${formatCurrency(highestAnomaly.amount)} on ${highestAnomaly.description} is ${((highestAnomaly.amount / categoryAverages[highestAnomaly.category]) * 100).toFixed(0)}% above your ${highestAnomaly.category} average.`,
       icon: '🔍'
     });
   }
@@ -351,7 +352,7 @@ export const generateInsights = (expenses: Expense[]): Insight[] => {
   if (categoryTotals['Food & Dining'] > totalSpent * 0.3) {
     insights.push({
       type: 'tip',
-      message: `Food & Dining accounts for ${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}% of spending. Meal planning and cooking at home could save ₹${(categoryTotals['Food & Dining'] * 0.3).toFixed(0)}/month.`,
+      message: `Food & Dining accounts for ${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}% of spending. Meal planning and cooking at home could save ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)}/month.`,
       icon: '🍳'
     });
   }
@@ -359,7 +360,7 @@ export const generateInsights = (expenses: Expense[]): Insight[] => {
   if (categoryTotals['Entertainment'] > totalSpent * 0.15) {
     insights.push({
       type: 'tip',
-      message: `Entertainment spending is notable. Audit subscriptions and consider free alternatives to save ₹${(categoryTotals['Entertainment'] * 0.2).toFixed(0)}/month.`,
+      message: `Entertainment spending is notable. Audit subscriptions and consider free alternatives to save ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}/month.`,
       icon: '🎬'
     });
   }
@@ -376,7 +377,7 @@ export const generateInsights = (expenses: Expense[]): Insight[] => {
   const recommendedBudget = monthlyProjection * 0.9; // 10% savings target
   insights.push({
     type: 'tip',
-    message: `AI Recommended Monthly Budget: ₹${recommendedBudget.toFixed(0)}. This includes a 10% savings buffer for emergencies and future goals.`,
+    message: `AI Recommended Monthly Budget: ${formatCurrency(recommendedBudget)}. This includes a 10% savings buffer for emergencies and future goals.`,
     icon: '🎯'
   });
   
