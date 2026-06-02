@@ -11,7 +11,7 @@ import {
   Check,
   Edit,
 } from 'lucide-react';
-import { parseReceiptText } from '../utils/receiptParser';
+import { parseReceiptText, TaxInfo } from '../utils/receiptParser';
 import { getCurrencySymbol } from '../utils/helpers';
 
 export interface ReceiptScanResult {
@@ -21,10 +21,12 @@ export interface ReceiptScanResult {
   itemCount: number;
   confidence: 'high' | 'medium' | 'low';
   warnings: string[];
+  taxInfo: TaxInfo;
 }
 
 interface ReceiptScanPanelProps {
   onScanComplete: (result: ReceiptScanResult) => void;
+  currency: string;
 }
 
 type ScanPhase = 'idle' | 'loading' | 'error';
@@ -78,7 +80,7 @@ async function preprocessImageForOcr(file: File): Promise<Blob | File> {
   }
 }
 
-export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
+export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelProps) {
   const currencySymbol = getCurrencySymbol();
   const galleryInputId = useId();
   const cameraInputId = useId();
@@ -161,7 +163,7 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
         } = await worker.recognize(ocrImage);
         await worker.terminate();
 
-        const parsed = parseReceiptText(text);
+        const parsed = parseReceiptText(text, currency);
         const amountStr =
           parsed.amount !== null ? parsed.amount.toFixed(2) : '';
 
@@ -172,6 +174,7 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
           itemCount: parsed.itemCount,
           confidence: parsed.confidence,
           warnings: parsed.warnings,
+          taxInfo: parsed.taxInfo,
         };
 
         setScanResult(result);
@@ -594,6 +597,55 @@ export function ReceiptScanPanel({ onScanComplete }: ReceiptScanPanelProps) {
                 </div>
               )}
             </div>
+
+            {/* Tax Breakdown */}
+            {scanResult.taxInfo.totalTax && scanResult.taxInfo.totalTax > 0 && (
+              <div className="mb-4 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                <p className="text-sm font-semibold text-purple-900 dark:text-purple-400 mb-2">
+                  Tax Breakdown
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {scanResult.taxInfo.sgst && (
+                    <div className="flex justify-between">
+                      <span className="text-purple-700 dark:text-purple-300">SGST:</span>
+                      <span className="text-purple-900 dark:text-purple-100 font-medium">
+                        {currencySymbol}{scanResult.taxInfo.sgst.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {scanResult.taxInfo.cgst && (
+                    <div className="flex justify-between">
+                      <span className="text-purple-700 dark:text-purple-300">CGST:</span>
+                      <span className="text-purple-900 dark:text-purple-100 font-medium">
+                        {currencySymbol}{scanResult.taxInfo.cgst.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {scanResult.taxInfo.igst && (
+                    <div className="flex justify-between">
+                      <span className="text-purple-700 dark:text-purple-300">IGST:</span>
+                      <span className="text-purple-900 dark:text-purple-100 font-medium">
+                        {currencySymbol}{scanResult.taxInfo.igst.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {scanResult.taxInfo.gst && !scanResult.taxInfo.sgst && !scanResult.taxInfo.cgst && !scanResult.taxInfo.igst && (
+                    <div className="flex justify-between">
+                      <span className="text-purple-700 dark:text-purple-300">GST:</span>
+                      <span className="text-purple-900 dark:text-purple-100 font-medium">
+                        {currencySymbol}{scanResult.taxInfo.gst.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between col-span-2 border-t border-purple-300 dark:border-purple-700 pt-2 mt-1">
+                    <span className="text-purple-900 dark:text-purple-100 font-semibold">Total Tax:</span>
+                    <span className="text-purple-900 dark:text-purple-100 font-bold">
+                      {currencySymbol}{scanResult.taxInfo.totalTax.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Editable Fields */}
             <div className="space-y-4">

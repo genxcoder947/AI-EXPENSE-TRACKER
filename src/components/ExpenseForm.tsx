@@ -11,6 +11,7 @@ import { Check, Info, Lightbulb, Sparkles } from 'lucide-react';
 
 interface ExpenseFormProps {
   onAddExpense: (expense: Expense) => Promise<void>;
+  currency: string;
 }
 
 const categories = [
@@ -25,7 +26,7 @@ const categories = [
   'Other'
 ];
 
-export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
+export function ExpenseForm({ onAddExpense, currency }: ExpenseFormProps) {
   const currencySymbol = getCurrencySymbol();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -128,7 +129,7 @@ export function ExpenseForm({ onAddExpense }: ExpenseFormProps) {
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-5">
-          <ReceiptScanPanel onScanComplete={applyScanResult} />
+          <ReceiptScanPanel onScanComplete={applyScanResult} currency={currency} />
 
           {scanHints && (
             <div

@@ -18,6 +18,7 @@ type Message = {
   timestamp: Date;
   quickActions?: string[];
   helpful?: boolean;
+  isStreaming?: boolean;
 };
 
 interface AIChatbotProps {
@@ -579,7 +580,7 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hi! 👋 I\'m your ExpenseAI assistant. I can help you with:\n\n• Adding and managing expenses\n• Understanding your spending patterns\n• Using the AI features\n• Setting budgets and goals\n• Analyzing financial health\n• Answering general questions\n\nWhat would you like help with?',
+      text: 'Hey there! 👋 I\'m ExpenseAI, your intelligent financial assistant.\n\nI can help you with:\n\n• 💰 Track expenses and income\n• 📊 Analyze your spending patterns\n• 💡 Get personalized financial insights\n• 🎯 Plan budgets and set goals\n• 🧮 Perform calculations\n• 📜 View transaction history\n\nWhat would you like to know today?',
       sender: 'bot',
       timestamp: new Date(),
       quickActions: ['How much did I spend?', 'What\'s my income?', 'Tell me a joke']
@@ -776,21 +777,48 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
 
     setTimeout(() => {
       const responseData = getBotResponse(inputValue);
+      
+      // Create a streaming bot message
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: responseData.response,
+        text: '',
         sender: 'bot',
         timestamp: new Date(),
-        quickActions: responseData.quickActions
+        quickActions: responseData.quickActions,
+        isStreaming: true
       };
+      
       setMessages(prev => [...prev, botResponse]);
       setIsTyping(false);
       
-      // Speak the bot response
-      if (voiceEnabled) {
-        speak(responseData.response);
-      }
-    }, 1000);
+      // Stream the response character by character
+      let currentIndex = 0;
+      const streamText = () => {
+        if (currentIndex < responseData.response.length) {
+          const charsToAdd = Math.min(3, responseData.response.length - currentIndex);
+          const newText = responseData.response.substring(0, currentIndex + charsToAdd);
+          
+          setMessages(prev => prev.map(msg => 
+            msg.id === botResponse.id ? { ...msg, text: newText } : msg
+          ));
+          
+          currentIndex += charsToAdd;
+          setTimeout(streamText, 15 + Math.random() * 20); // Random delay for natural typing
+        } else {
+          // Streaming complete
+          setMessages(prev => prev.map(msg => 
+            msg.id === botResponse.id ? { ...msg, isStreaming: false } : msg
+          ));
+          
+          // Speak the bot response
+          if (voiceEnabled) {
+            speak(responseData.response);
+          }
+        }
+      };
+      
+      streamText();
+    }, 800);
   };
 
   const handleQuickAction = (action: string) => {
@@ -922,7 +950,7 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
               >
                 <div className={`max-w-[85%] ${message.sender === 'user' ? 'flex flex-col items-end' : ''}`}>
                   <div
@@ -933,7 +961,14 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
                     }`}
                   >
                     <div className="flex items-start gap-2">
-                      {message.sender === 'bot' && <Bot className="w-4 h-4 mt-0.5 text-cyan-400 flex-shrink-0" />}
+                      {message.sender === 'bot' && (
+                        <div className="flex-shrink-0">
+                          <Bot className="w-4 h-4 mt-0.5 text-cyan-400" />
+                          {message.isStreaming && (
+                            <span className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse ml-1"></span>
+                          )}
+                        </div>
+                      )}
                       <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
                       {message.sender === 'user' && <User className="w-4 h-4 mt-0.5 flex-shrink-0" />}
                     </div>
@@ -942,7 +977,7 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
                   {/* Message actions */}
                   <div className={`flex items-center gap-2 mt-1 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <span className="text-xs text-slate-500">{formatTime(message.timestamp)}</span>
-                    {message.sender === 'bot' && (
+                    {message.sender === 'bot' && !message.isStreaming && (
                       <>
                         <button
                           onClick={() => handleCopyMessage(message.text)}
@@ -970,13 +1005,13 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
                   </div>
 
                   {/* Quick actions */}
-                  {message.sender === 'bot' && message.quickActions && message.quickActions.length > 0 && (
+                  {message.sender === 'bot' && !message.isStreaming && message.quickActions && message.quickActions.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {message.quickActions.map((action, index) => (
                         <button
                           key={index}
                           onClick={() => handleQuickAction(action)}
-                          className="text-xs bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 px-3 py-1.5 rounded-full border border-cyan-500/30 transition-all"
+                          className="text-xs bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 px-3 py-1.5 rounded-full border border-cyan-500/30 transition-all hover:scale-105"
                         >
                           {action}
                         </button>
@@ -987,7 +1022,7 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
               </div>
             ))}
             {isTyping && (
-              <div className="flex justify-start">
+              <div className="flex justify-start animate-fade-in">
                 <div className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Bot className="w-4 h-4 text-cyan-400" />

@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { User, Mail, Calendar, Shield, Database, Trash2, DollarSign } from 'lucide-react';
+import { User, Mail, Calendar, Shield, Database, Trash2, DollarSign, Camera, X } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
 
 interface AccountSettingsProps {
@@ -28,6 +29,10 @@ export default function AccountSettings({
   onCurrencyChange,
   currentCurrency
 }: AccountSettingsProps) {
+  const [profilePicture, setProfilePicture] = useState<string | null>(() => {
+    return localStorage.getItem('profilePicture');
+  });
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -40,6 +45,24 @@ export default function AccountSettings({
   const getInitials = (email: string) => {
     const name = email.split('@')[0];
     return name.substring(0, 2).toUpperCase();
+  };
+
+  const handleProfilePictureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfilePicture(base64String);
+        localStorage.setItem('profilePicture', base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveProfilePicture = () => {
+    setProfilePicture(null);
+    localStorage.removeItem('profilePicture');
   };
 
   const currencies = [
@@ -58,14 +81,45 @@ export default function AccountSettings({
       {/* Profile Header */}
       <Card className={`p-6 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
         <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white font-bold text-2xl">
-            {getInitials(userEmail)}
+          <div className="relative group">
+            {profilePicture ? (
+              <>
+                <img
+                  src={profilePicture}
+                  alt="Profile"
+                  className="w-20 h-20 rounded-full object-cover border-4 border-purple-500"
+                />
+                <button
+                  onClick={handleRemoveProfilePicture}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove profile picture"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white font-bold text-2xl">
+                {getInitials(userEmail)}
+              </div>
+            )}
+            <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+              <Camera className="w-6 h-6 text-white" />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePictureUpload}
+                className="hidden"
+              />
+            </label>
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
               {userEmail}
             </h2>
             <p className="text-slate-600 dark:text-slate-400">Account Owner</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {profilePicture ? 'Profile picture set' : 'Click to add profile picture'}
+            </p>
           </div>
         </div>
       </Card>

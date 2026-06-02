@@ -7,12 +7,87 @@ export interface ParsedReceipt {
   itemCount: number;
   confidence: 'high' | 'medium' | 'low';
   warnings: string[];
+  taxInfo: TaxInfo;
 }
 
 export interface ReceiptLineItem {
   name: string;
   amount: number;
   quantity?: number;
+}
+
+export interface TaxInfo {
+  sgst?: number;
+  cgst?: number;
+  igst?: number;
+  gst?: number;
+  totalTax?: number;
+}
+
+// Default currency for receipt parsing
+const DEFAULT_CURRENCY = 'INR';
+
+const TAX_LINE_HINTS = /\b(?:sgst|cgst|igst|gst|vat|tax)\b.*[:.]?\s*[0-9OoQDIl|SsBb,\.\s]+/i;
+
+function extractTaxInfo(lines: string[]): TaxInfo {
+  const taxInfo: TaxInfo = {};
+  
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+    
+    // Extract SGST
+    if (lowerLine.includes('sgst')) {
+      const sgstMatch = line.match(/sgst\s*[:.]?\s*([0-9OoQDIl|SsBb,\.\s]+)/i);
+      if (sgstMatch) {
+        const amount = parseMoneyToken(sgstMatch[1]);
+        if (amount !== null) taxInfo.sgst = amount;
+      }
+    }
+    
+    // Extract CGST
+    if (lowerLine.includes('cgst')) {
+      const cgstMatch = line.match(/cgst\s*[:.]?\s*([0-9OoQDIl|SsBb,\.\s]+)/i);
+      if (cgstMatch) {
+        const amount = parseMoneyToken(cgstMatch[1]);
+        if (amount !== null) taxInfo.cgst = amount;
+      }
+    }
+    
+    // Extract IGST
+    if (lowerLine.includes('igst')) {
+      const igstMatch = line.match(/igst\s*[:.]?\s*([0-9OoQDIl|SsBb,\.\s]+)/i);
+      if (igstMatch) {
+        const amount = parseMoneyToken(igstMatch[1]);
+        if (amount !== null) taxInfo.igst = amount;
+      }
+    }
+    
+    // Extract GST (if not already captured as SGST/CGST/IGST)
+    if (lowerLine.includes('gst') && !lowerLine.includes('sgst') && !lowerLine.includes('cgst') && !lowerLine.includes('igst')) {
+      const gstMatch = line.match(/gst\s*[:.]?\s*([0-9OoQDIl|SsBb,\.\s]+)/i);
+      if (gstMatch) {
+        const amount = parseMoneyToken(gstMatch[1]);
+        if (amount !== null) taxInfo.gst = amount;
+      }
+    }
+    
+    // Extract VAT
+    if (lowerLine.includes('vat')) {
+      const vatMatch = line.match(/vat\s*[:.]?\s*([0-9OoQDIl|SsBb,\.\s]+)/i);
+      if (vatMatch) {
+        const amount = parseMoneyToken(vatMatch[1]);
+        if (amount !== null) taxInfo.gst = amount; // Treat VAT as GST
+      }
+    }
+  }
+  
+  // Calculate total tax
+  const taxes = [taxInfo.sgst, taxInfo.cgst, taxInfo.igst, taxInfo.gst].filter((t): t is number => t !== undefined);
+  if (taxes.length > 0) {
+    taxInfo.totalTax = taxes.reduce((sum, t) => sum + t, 0);
+  }
+  
+  return taxInfo;
 }
 
 const TOTAL_LINE_HINTS =
@@ -329,6 +404,13 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
   let pendingAmount: number | null = null;
 
   for (const line of lines) {
+    // Skip tax lines
+    if (TAX_LINE_HINTS.test(line)) {
+      pendingName = null;
+      pendingAmount = null;
+      continue;
+    }
+
     if (TOTAL_LINE_HINTS.test(line) || WEAK_TOTAL_HINTS.test(line) || shouldIgnoreMoneyLine(line)) {
       pendingName = null;
       pendingAmount = null;
@@ -348,6 +430,7 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
         continue;
       }
 
+      // More lenient item name validation
       if (
         fallbackName &&
         isLikelyItemName(cleanItemName(fallbackName)) &&
@@ -411,20 +494,20 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
     .slice(0, 15);
 }
 
-function formatReceiptAmount(amount: number): string {
-  return formatCurrency(amount);
+function formatReceiptAmount(amount: number, currency: string = DEFAULT_CURRENCY): string {
+  return formatCurrency(amount, currency);
 }
 
-function buildReceiptNotes(items: ReceiptLineItem[], total: number | null): string {
+function buildReceiptNotes(items: ReceiptLineItem[], total: number | null, currency: string = DEFAULT_CURRENCY, taxInfo: TaxInfo = {}): string {
   if (items.length === 0) return '';
 
   const orderedCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
   const itemLines = items.slice(0, 12).map((item, index) => {
     const quantity = item.quantity && item.quantity > 1 ? `${item.quantity} x ` : '';
     const unitPrice = item.quantity && item.quantity > 1 
-      ? ` (${formatReceiptAmount(item.amount / item.quantity)} each)` 
+      ? ` (${formatReceiptAmount(item.amount / item.quantity, currency)} each)` 
       : '';
-    return `${index + 1}. ${quantity}${item.name}${unitPrice} - ${formatReceiptAmount(item.amount)}`;
+    return `${index + 1}. ${quantity}${item.name}${unitPrice} - ${formatReceiptAmount(item.amount, currency)}`;
   });
   const remaining = items.length > itemLines.length ? items.length - itemLines.length : 0;
 
@@ -432,19 +515,42 @@ function buildReceiptNotes(items: ReceiptLineItem[], total: number | null): stri
     `Scanned receipt items (${orderedCount}):`,
     ...itemLines,
     ...(remaining > 0 ? [`...and ${remaining} more item${remaining === 1 ? '' : 's'}`] : []),
-    ...(total !== null ? [`Receipt total: ${formatReceiptAmount(total)}`] : []),
-    `Verify item names and prices before saving.`
-  ].join('\n');
+  ];
 
-  if (notes.length <= 700) return notes;
+  // Add tax information if available
+  if (taxInfo.totalTax && taxInfo.totalTax > 0) {
+    notes.push('');
+    notes.push('Tax Breakdown:');
+    if (taxInfo.sgst) notes.push(`SGST: ${formatReceiptAmount(taxInfo.sgst, currency)}`);
+    if (taxInfo.cgst) notes.push(`CGST: ${formatReceiptAmount(taxInfo.cgst, currency)}`);
+    if (taxInfo.igst) notes.push(`IGST: ${formatReceiptAmount(taxInfo.igst, currency)}`);
+    if (taxInfo.gst && !taxInfo.sgst && !taxInfo.cgst && !taxInfo.igst) notes.push(`GST: ${formatReceiptAmount(taxInfo.gst, currency)}`);
+    notes.push(`Total Tax: ${formatReceiptAmount(taxInfo.totalTax, currency)}`);
+  }
 
+  notes.push(...(total !== null ? [`Receipt total: ${formatReceiptAmount(total, currency)}`] : []));
+  notes.push('Verify item names and prices before saving.');
+
+  const fullNotes = notes.join('\n');
+
+  if (fullNotes.length <= 700) return fullNotes;
+
+  // Compact version if too long
   const compactLines = itemLines.slice(0, 8);
-  return [
+  const compactNotes = [
     `Scanned receipt items (${orderedCount}):`,
     ...compactLines,
     `...review receipt for remaining items`,
-    ...(total !== null ? [`Receipt total: ${formatReceiptAmount(total)}`] : []),
-  ].join('\n').slice(0, 700);
+  ];
+
+  if (taxInfo.totalTax && taxInfo.totalTax > 0) {
+    compactNotes.push('');
+    compactNotes.push(`Tax: ${formatReceiptAmount(taxInfo.totalTax, currency)}`);
+  }
+
+  compactNotes.push(...(total !== null ? [`Receipt total: ${formatReceiptAmount(total, currency)}`] : []));
+
+  return compactNotes.join('\n').slice(0, 700);
 }
 
 function countOrderedItems(items: ReceiptLineItem[]): number {
@@ -467,17 +573,35 @@ function buildReceiptDescription(merchant: string | null, items: ReceiptLineItem
       .trim();
   };
 
-  if (items.length > 0) {
-    const itemSummary = items.slice(0, 3).map((item) => {
-      const quantity = item.quantity && item.quantity > 1 ? `${item.quantity} x ` : '';
+  // Generate a short, descriptive description
+  if (merchant && items.length > 0) {
+    // Use merchant name with item count
+    const itemSummary = items.slice(0, 2).map((item) => {
+      const quantity = item.quantity && item.quantity > 1 ? `${item.quantity}x ` : '';
       return `${quantity}${cleanItemName(item.name)}`;
     });
     const suffix = items.length > itemSummary.length ? ` +${items.length - itemSummary.length} more` : '';
-    const description = `${merchant ? `${merchant}: ` : ''}${itemSummary.filter(Boolean).join(', ')}${suffix}`;
-    return description.length > 95 ? `${description.slice(0, 92).trim()}...` : description;
+    const description = `${merchant} - ${itemSummary.filter(Boolean).join(', ')}${suffix}`;
+    return description.length > 60 ? `${description.slice(0, 57).trim()}...` : description;
   }
 
-  return merchant ? `${merchant} order` : 'Receipt / bill';
+  if (merchant) {
+    // Just merchant name if no items detected
+    return `${merchant} receipt`;
+  }
+
+  if (items.length > 0) {
+    // Use items if no merchant detected
+    const itemSummary = items.slice(0, 3).map((item) => {
+      const quantity = item.quantity && item.quantity > 1 ? `${item.quantity}x ` : '';
+      return `${quantity}${cleanItemName(item.name)}`;
+    });
+    const suffix = items.length > itemSummary.length ? ` +${items.length - itemSummary.length} more` : '';
+    const description = `Receipt - ${itemSummary.filter(Boolean).join(', ')}${suffix}`;
+    return description.length > 60 ? `${description.slice(0, 57).trim()}...` : description;
+  }
+
+  return 'Scanned receipt';
 }
 
 function cleanMerchantName(line: string): string {
@@ -525,12 +649,13 @@ function detectMerchant(text: string): string | null {
 }
 
 /** Turn noisy OCR text into amount + description; user should always verify. */
-export function parseReceiptText(raw: string): ParsedReceipt {
+export function parseReceiptText(raw: string, currency: string = DEFAULT_CURRENCY): ParsedReceipt {
   const warnings: string[] = [];
   const text = normalizeReceiptText(raw);
   const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
 
   const merchant = detectMerchant(text);
+  const taxInfo = extractTaxInfo(lines);
 
   type Cand = { amount: number; score: number; line: string };
   const cands: Cand[] = [];
@@ -556,10 +681,11 @@ export function parseReceiptText(raw: string): ParsedReceipt {
     return {
       amount: itemTotal,
       description: buildReceiptDescription(merchant, items),
-      notes: buildReceiptNotes(items, null),
+      notes: buildReceiptNotes(items, null, currency, taxInfo),
       itemCount: countOrderedItems(items),
       confidence: itemTotal === null ? 'low' : 'medium',
       warnings,
+      taxInfo,
     };
   }
 
@@ -571,7 +697,7 @@ export function parseReceiptText(raw: string): ParsedReceipt {
   const best = cands[0];
   const runnerUp = cands[1];
   const items = extractLineItems(lines, best.amount);
-  const notes = buildReceiptNotes(items, best.amount);
+  const notes = buildReceiptNotes(items, best.amount, currency, taxInfo);
   const description = buildReceiptDescription(merchant, items);
 
   if (best.score >= 3) {
@@ -585,6 +711,7 @@ export function parseReceiptText(raw: string): ParsedReceipt {
       itemCount: countOrderedItems(items),
       confidence: 'high',
       warnings,
+      taxInfo,
     };
   }
 
@@ -597,11 +724,12 @@ export function parseReceiptText(raw: string): ParsedReceipt {
       itemCount: countOrderedItems(items),
       confidence: 'medium',
       warnings,
+      taxInfo,
     };
   }
 
   warnings.push(
-    'Could not find a line labeled “total”. The largest amount was picked—please verify.',
+    'Could not find a line labeled "total". The largest amount was picked—please verify.',
   );
   return {
     amount: best.amount,
@@ -610,5 +738,6 @@ export function parseReceiptText(raw: string): ParsedReceipt {
     itemCount: countOrderedItems(items),
     confidence: 'low',
     warnings,
+    taxInfo,
   };
 }
