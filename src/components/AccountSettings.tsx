@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { User, Mail, Calendar, Shield, Database, Trash2, DollarSign, Camera, X } from 'lucide-react';
-import { formatCurrency } from '../utils/helpers';
+import { User, Mail, Calendar, Shield, Database, Trash2, DollarSign, Camera, X, RefreshCw } from 'lucide-react';
+import { formatCurrency, refreshCurrencyRates, getExchangeRates, getExchangeRate } from '../utils/helpers';
 
 interface AccountSettingsProps {
   userEmail: string;
@@ -32,6 +32,40 @@ export default function AccountSettings({
   const [profilePicture, setProfilePicture] = useState<string | null>(() => {
     return localStorage.getItem('profilePicture');
   });
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadExchangeRates();
+  }, []);
+
+  const loadExchangeRates = async () => {
+    try {
+      const rates = await getExchangeRates();
+      setExchangeRates(rates);
+      
+      const stored = localStorage.getItem('exchangeRates');
+      if (stored) {
+        const data = JSON.parse(stored);
+        setLastUpdated(new Date(data.timestamp).toLocaleString());
+      }
+    } catch (error) {
+      console.error('Failed to load exchange rates:', error);
+    }
+  };
+
+  const handleRefreshRates = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshCurrencyRates();
+      await loadExchangeRates();
+    } catch (error) {
+      console.error('Failed to refresh exchange rates:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -87,7 +121,7 @@ export default function AccountSettings({
                 <img
                   src={profilePicture}
                   alt="Profile"
-                  className="w-20 h-20 rounded-full object-cover border-4 border-purple-500"
+                  className="w-20 h-20 rounded-full object-cover border-4 border-emerald-500"
                 />
                 <button
                   onClick={handleRemoveProfilePicture}
@@ -98,7 +132,7 @@ export default function AccountSettings({
                 </button>
               </>
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white font-bold text-2xl">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-2xl">
                 {getInitials(userEmail)}
               </div>
             )}
@@ -201,10 +235,24 @@ export default function AccountSettings({
 
       {/* Currency Settings */}
       <Card className={`p-6 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-        <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-          <DollarSign className="w-5 h-5" />
-          Currency Settings
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Currency Settings
+          </h3>
+          <Button
+            onClick={handleRefreshRates}
+            disabled={isRefreshing}
+            className={`text-sm flex items-center gap-2 ${
+              isDarkMode 
+                ? 'bg-slate-700 hover:bg-slate-600 text-white' 
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+            }`}
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh Rates'}
+          </Button>
+        </div>
         <div className="space-y-3">
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700">
             <p className="font-medium text-slate-800 dark:text-white mb-2">Select Currency</p>
@@ -227,6 +275,27 @@ export default function AccountSettings({
               This will change the currency symbol used throughout the app.
             </p>
           </div>
+          
+          {exchangeRates && (
+            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700">
+              <p className="font-medium text-slate-800 dark:text-white mb-2">Current Exchange Rates (vs USD)</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                {currencies.map((currency) => (
+                  <div key={currency.code} className={`p-2 rounded ${isDarkMode ? 'bg-slate-600' : 'bg-white'}`}>
+                    <p className="font-medium text-slate-800 dark:text-white">{currency.code}</p>
+                    <p className="text-slate-600 dark:text-slate-400">
+                      {exchangeRates[currency.code] ? exchangeRates[currency.code].toFixed(4) : 'N/A'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {lastUpdated && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                  Last updated: {lastUpdated}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </Card>
 

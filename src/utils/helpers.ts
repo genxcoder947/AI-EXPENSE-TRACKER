@@ -1,4 +1,5 @@
 import { Expense } from '../types';
+import { convertCurrency, getExchangeRates as fetchExchangeRates, refreshExchangeRates, getExchangeRate as fetchExchangeRate, ExchangeRates } from './currencyConverter';
 
 const DEFAULT_CURRENCY = 'INR';
 
@@ -14,6 +15,8 @@ const currencyLocales: Record<string, string> = {
 };
 
 let preferredCurrency = localStorage.getItem('currency') || DEFAULT_CURRENCY;
+let cachedRates: ExchangeRates | null = null;
+let ratesPromise: Promise<ExchangeRates> | null = null;
 
 export const getPreferredCurrency = (): string => preferredCurrency;
 
@@ -31,13 +34,80 @@ export const getCurrencySymbol = (currency: string = preferredCurrency): string 
   return parts.find((part) => part.type === 'currency')?.value || currency;
 };
 
-export const formatCurrency = (amount: number, currency: string = preferredCurrency): string => {
+export const formatCurrency = (amount: number, currency: string = preferredCurrency, originalCurrency?: string): string => {
+  // If original currency is provided and different from display currency, convert
+  if (originalCurrency && originalCurrency !== currency) {
+    // This is a synchronous version for backward compatibility
+    // For async conversion, use formatCurrencyWithConversion
+    return new Intl.NumberFormat(currencyLocales[currency] || 'en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2
+    }).format(amount);
+  }
+  
   return new Intl.NumberFormat(currencyLocales[currency] || 'en-US', {
     style: 'currency',
     currency,
     maximumFractionDigits: 2
   }).format(amount);
 };
+
+async function ensureRates(): Promise<ExchangeRates> {
+  if (cachedRates) {
+    return cachedRates;
+  }
+  
+  if (!ratesPromise) {
+    ratesPromise = fetchExchangeRates().then(rates => {
+      cachedRates = rates;
+      ratesPromise = null;
+      return rates;
+    });
+  }
+  
+  return ratesPromise;
+}
+
+export async function getExchangeRates(): Promise<ExchangeRates> {
+  return ensureRates();
+}
+
+export async function getExchangeRate(fromCurrency: string, toCurrency: string): Promise<number> {
+  const rates = await ensureRates();
+  return fetchExchangeRate(fromCurrency, toCurrency, rates);
+}
+
+export async function formatCurrencyWithConversion(
+  amount: number,
+  fromCurrency: string = preferredCurrency,
+  toCurrency: string = preferredCurrency
+): Promise<string> {
+  if (fromCurrency === toCurrency) {
+    return formatCurrency(amount, toCurrency);
+  }
+
+  const rates = await ensureRates();
+  const convertedAmount = convertCurrency(amount, fromCurrency, toCurrency, rates);
+  return formatCurrency(convertedAmount, toCurrency);
+}
+
+export async function convertAmount(
+  amount: number,
+  fromCurrency: string = preferredCurrency,
+  toCurrency: string = preferredCurrency
+): Promise<number> {
+  if (fromCurrency === toCurrency) {
+    return amount;
+  }
+
+  const rates = await ensureRates();
+  return convertCurrency(amount, fromCurrency, toCurrency, rates);
+}
+
+export async function refreshCurrencyRates(): Promise<void> {
+  cachedRates = await refreshExchangeRates();
+}
 
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);

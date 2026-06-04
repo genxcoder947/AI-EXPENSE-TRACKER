@@ -16,13 +16,13 @@ type LoginProps = {
 
 function ResetCodeBox({ code, onCopy }: { code: string; onCopy: () => void }) {
   return (
-    <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-4 backdrop-blur-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400 mb-2">Your reset code</p>
+    <div className="rounded-lg border border-teal-500/30 bg-teal-500/10 p-4 backdrop-blur-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-teal-400 mb-2">Your reset code</p>
       <p className="mt-1 break-all font-mono text-lg text-white font-bold tracking-wider">{code}</p>
       <button
         type="button"
         onClick={onCopy}
-        className="mt-3 text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-2 mx-auto"
+        className="mt-3 text-xs font-semibold text-teal-400 hover:text-teal-300 flex items-center gap-2 mx-auto"
       >
         <ArrowRight className="w-4 h-4" />
         Copy code
@@ -208,23 +208,23 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
           : 'Enter your reset code and choose a new password';
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
         
         {/* Floating particles */}
-        <div className="absolute top-20 left-20 w-4 h-4 bg-purple-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '3s' }}></div>
-        <div className="absolute top-40 right-40 w-3 h-3 bg-cyan-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '4s', animationDelay: '1s' }}></div>
-        <div className="absolute bottom-32 left-32 w-5 h-5 bg-pink-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '5s', animationDelay: '2s' }}></div>
-        <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-purple-300 rounded-full animate-bounce opacity-50" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}></div>
-        <div className="absolute bottom-1/4 right-1/3 w-3 h-3 bg-cyan-300 rounded-full animate-bounce opacity-50" style={{ animationDuration: '3.5s', animationDelay: '1.5s' }}></div>
+        <div className="absolute top-20 left-20 w-4 h-4 bg-emerald-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '3s' }}></div>
+        <div className="absolute top-40 right-40 w-3 h-3 bg-teal-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '4s', animationDelay: '1s' }}></div>
+        <div className="absolute bottom-32 left-32 w-5 h-5 bg-blue-400 rounded-full animate-bounce opacity-50" style={{ animationDuration: '5s', animationDelay: '2s' }}></div>
+        <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-emerald-300 rounded-full animate-bounce opacity-50" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}></div>
+        <div className="absolute bottom-1/4 right-1/3 w-3 h-3 bg-teal-300 rounded-full animate-bounce opacity-50" style={{ animationDuration: '3.5s', animationDelay: '1.5s' }}></div>
         
         {/* Moving gradient orbs */}
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-r from-purple-600/30 to-cyan-600/30 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }}></div>
-        <div className="absolute bottom-1/3 right-1/4 w-72 h-72 bg-gradient-to-r from-pink-600/20 to-purple-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }}></div>
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }}></div>
+        <div className="absolute bottom-1/3 right-1/4 w-72 h-72 bg-gradient-to-r from-blue-600/20 to-emerald-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }}></div>
       </div>
 
       {/* Grid pattern overlay */}
@@ -235,7 +235,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
           {/* Left side - AI Image and Branding */}
           <div className="hidden lg:block space-y-8">
             <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-2xl blur-lg opacity-30"></div>
+              <div className="absolute -inset-4 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl blur-lg opacity-30"></div>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                 <img
                   src={aiImages[currentImageIndex]}
@@ -248,19 +248,19 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                 {/* Floating AI Icons */}
                 <div className="absolute top-8 right-8 flex gap-3">
                   <div className="bg-white/10 backdrop-blur-sm rounded-full p-3 border border-white/20 animate-bounce" style={{ animationDelay: '0s' }}>
-                    <Bot className="w-6 h-6 text-cyan-400" />
+                    <Bot className="w-6 h-6 text-teal-400" />
                   </div>
                   <div className="bg-white/10 backdrop-blur-sm rounded-full p-3 border border-white/20 animate-bounce" style={{ animationDelay: '0.5s' }}>
-                    <Cpu className="w-6 h-6 text-purple-400" />
+                    <Cpu className="w-6 h-6 text-emerald-400" />
                   </div>
                   <div className="bg-white/10 backdrop-blur-sm rounded-full p-3 border border-white/20 animate-bounce" style={{ animationDelay: '1s' }}>
-                    <Database className="w-6 h-6 text-pink-400" />
+                    <Database className="w-6 h-6 text-blue-400" />
                   </div>
                 </div>
 
                 <div className="absolute bottom-0 left-0 right-0 p-8">
                   <div className="flex items-center gap-3 mb-4">
-                    <Brain className="w-10 h-10 text-cyan-400" />
+                    <Brain className="w-10 h-10 text-teal-400" />
                     <h2 className="text-3xl font-bold text-white">ExpenseAI</h2>
                   </div>
                   <p className="text-slate-300 text-lg">
@@ -273,17 +273,17 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
             {/* Feature highlights */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
-                <Sparkles className="w-8 h-8 text-purple-400 mb-2" />
+                <Sparkles className="w-8 h-8 text-emerald-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Smart AI</h3>
                 <p className="text-slate-400 text-xs mt-1">Intelligent categorization</p>
               </div>
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
-                <Zap className="w-8 h-8 text-cyan-400 mb-2" />
+                <Zap className="w-8 h-8 text-teal-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Fast</h3>
                 <p className="text-slate-400 text-xs mt-1">Lightning quick insights</p>
               </div>
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
-                <Lock className="w-8 h-8 text-pink-400 mb-2" />
+                <Lock className="w-8 h-8 text-blue-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Secure</h3>
                 <p className="text-slate-400 text-xs mt-1">Your data stays local</p>
               </div>
@@ -309,12 +309,12 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
             <Card className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl p-8 space-y-6">
               {/* Mobile branding */}
               <div className="lg:hidden flex items-center gap-3 justify-center mb-6">
-                <Brain className="w-10 h-10 text-cyan-400" />
+                <Brain className="w-10 h-10 text-teal-400" />
                 <h2 className="text-3xl font-bold text-white">ExpenseAI</h2>
               </div>
 
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-2xl mb-4 shadow-lg">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl mb-4 shadow-lg">
                   {view === 'login' && <Lock className="w-8 h-8 text-white" />}
                   {view === 'signup' && <Sparkles className="w-8 h-8 text-white" />}
                   {(view === 'forgot' || view === 'reset') && <Mail className="w-8 h-8 text-white" />}
@@ -325,7 +325,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
 
               {view === 'forgot' && (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-teal-400">
                     Step 1 of 2 — Get your reset code
                   </p>
                   <div>
@@ -338,14 +338,14 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your account email"
-                        className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                        className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
                         disabled={loading}
                       />
                     </div>
                   </div>
-                  {info && <p className="text-sm text-cyan-400">{info}</p>}
+                  {info && <p className="text-sm text-teal-400">{info}</p>}
                   {error && <p className="text-sm text-red-400">{error}</p>}
-                  <Button type="submit" className="w-full bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white font-semibold shadow-lg" disabled={loading}>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg" disabled={loading}>
                     {loading ? 'Sending reset code...' : 'Get reset code'}
                   </Button>
                   {issuedResetCode && (
@@ -362,10 +362,10 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
 
               {view === 'reset' && (
                 <form onSubmit={handleResetPassword} className="space-y-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-cyan-400">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-teal-400">
                     Step 2 of 2 — Create your new password
                   </p>
-                  {info && <p className="text-sm text-cyan-400">{info}</p>}
+                  {info && <p className="text-sm text-teal-400">{info}</p>}
                   {issuedResetCode && (
                     <ResetCodeBox code={issuedResetCode} onCopy={() => void copyResetCode()} />
                   )}
@@ -377,7 +377,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                       value={resetCode}
                       onChange={(e) => setResetCode(e.target.value)}
                       placeholder="Paste your reset code"
-                      className="w-full font-mono text-sm bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                      className="w-full font-mono text-sm bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
                       disabled={loading}
                       autoComplete="one-time-code"
                     />
@@ -396,7 +396,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="At least 6 characters"
-                          className="w-full pl-10 pr-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          className="w-full pl-10 pr-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
                           disabled={loading}
                         />
                         <button
@@ -418,14 +418,14 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Re-enter your new password"
-                          className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
                           disabled={loading}
                         />
                       </div>
                     </div>
                   </div>
                   {error && <p className="text-sm text-red-400">{error}</p>}
-                  <Button type="submit" className="w-full bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white font-semibold shadow-lg" disabled={loading}>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg" disabled={loading}>
                     {loading ? 'Updating password...' : 'Set new password'}
                   </Button>
                 </form>
@@ -443,7 +443,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email"
-                        className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                        className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
                         disabled={loading}
                       />
                     </div>
@@ -458,7 +458,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your password"
-                        className="w-full pl-10 pr-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                        className="w-full pl-10 pr-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
                         disabled={loading}
                       />
                       <button
@@ -473,7 +473,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                   {view === 'login' && (
                     <p className="text-right text-sm">
                       <span
-                        className="text-cyan-400 hover:text-cyan-300 cursor-pointer"
+                        className="text-teal-400 hover:text-teal-300 cursor-pointer"
                         onClick={() => switchView('forgot')}
                       >
                         Forgot password?
@@ -481,7 +481,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                     </p>
                   )}
                   {error && <p className="text-sm text-red-400">{error}</p>}
-                  <Button type="submit" className="w-full bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white font-semibold shadow-lg" disabled={loading}>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg" disabled={loading}>
                     {loading
                       ? view === 'login'
                         ? 'Signing in...'
@@ -498,7 +498,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                   <p>
                     Don&apos;t have an account?{' '}
                     <span
-                      className="text-cyan-400 hover:text-cyan-300 cursor-pointer font-medium"
+                      className="text-teal-400 hover:text-teal-300 cursor-pointer font-medium"
                       onClick={() => switchView('signup')}
                     >
                       Sign up
@@ -509,7 +509,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                   <p>
                     Already have an account?{' '}
                     <span
-                      className="text-cyan-400 hover:text-cyan-300 cursor-pointer font-medium"
+                      className="text-teal-400 hover:text-teal-300 cursor-pointer font-medium"
                       onClick={() => switchView('login')}
                     >
                       Sign in
@@ -520,7 +520,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                   <p>
                     Remember your password?{' '}
                     <span
-                      className="text-cyan-400 hover:text-cyan-300 cursor-pointer font-medium"
+                      className="text-teal-400 hover:text-teal-300 cursor-pointer font-medium"
                       onClick={() => switchView('login')}
                     >
                       Back to sign in
@@ -530,14 +530,14 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                 {view === 'reset' && (
                   <p>
                     <span
-                      className="text-cyan-400 hover:text-cyan-300 cursor-pointer font-medium"
+                      className="text-teal-400 hover:text-teal-300 cursor-pointer font-medium"
                       onClick={() => switchView('forgot')}
                     >
                       Request a new code
                     </span>
                     {' · '}
                     <span
-                      className="text-cyan-400 hover:text-cyan-300 cursor-pointer font-medium"
+                      className="text-teal-400 hover:text-teal-300 cursor-pointer font-medium"
                       onClick={() => switchView('login')}
                     >
                       Back to sign in

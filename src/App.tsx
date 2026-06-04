@@ -9,14 +9,19 @@ import { InsightsPanel } from './components/InsightsPanel';
 import { SpendingChart } from './components/SpendingChart';
 import { StatsOverview } from './components/StatsOverview';
 import { generateInsights, calculateCategoryTotals } from './utils/aiEngine';
-import { getPreferredCurrency, setPreferredCurrency, sortExpensesByDate } from './utils/helpers';
+import { getPreferredCurrency, setPreferredCurrency, sortExpensesByDate, convertAmount } from './utils/helpers';
 import { CategoryPieChart } from './components/CategoryPieChart';
-import { Sparkles, Moon, Sun } from 'lucide-react';
+import { Sparkles, Moon, Sun, RefreshCw, Search } from 'lucide-react';
 import Login from './components/auth/Login';
 import AIChatbot from './components/AIChatbot';
 import Sidebar from './components/Sidebar';
 import ExpenseTimelineGraph from './components/ExpenseTimelineGraph';
 import AccountSettings from './components/AccountSettings';
+import { QuickSummary } from './components/QuickSummary';
+import { BudgetProgressTracker } from './components/BudgetProgressTracker';
+import { MonthlyComparison } from './components/MonthlyComparison';
+import { SavingsGoalProgress } from './components/SavingsGoalProgress';
+import { QuickActions } from './components/QuickActions';
 import {
   type ApiUser,
   clearStoredSession,
@@ -47,6 +52,10 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currency, setCurrency] = useState(getPreferredCurrency);
+  const [displayExpenses, setDisplayExpenses] = useState<Expense[]>([]);
+  const [displayIncome, setDisplayIncome] = useState<Income[]>([]);
+  const [isRefreshingInsights, setIsRefreshingInsights] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -57,6 +66,47 @@ export default function App() {
     setPreferredCurrency(newCurrency);
     setCurrency(newCurrency);
   };
+
+  // Convert expenses and income for display when currency changes
+  useEffect(() => {
+    const convertForDisplay = async () => {
+      console.log('Currency changed to:', currency);
+      console.log('Original expenses:', expenses);
+      console.log('Original income:', income);
+      
+      if (currency === 'INR') {
+        console.log('Using original amounts (INR)');
+        setDisplayExpenses(expenses);
+        setDisplayIncome(income);
+      } else {
+        try {
+          console.log('Converting amounts from INR to', currency);
+          const convertedExp = await Promise.all(
+            expenses.map(async (exp) => ({
+              ...exp,
+              amount: await convertAmount(exp.amount, 'INR', currency)
+            }))
+          );
+          const convertedInc = await Promise.all(
+            income.map(async (inc) => ({
+              ...inc,
+              amount: await convertAmount(inc.amount, 'INR', currency)
+            }))
+          );
+          console.log('Converted expenses:', convertedExp);
+          console.log('Converted income:', convertedInc);
+          setDisplayExpenses(convertedExp);
+          setDisplayIncome(convertedInc);
+        } catch (error) {
+          console.error('Currency conversion error:', error);
+          // Fallback to original amounts if conversion fails
+          setDisplayExpenses(expenses);
+          setDisplayIncome(income);
+        }
+      }
+    };
+    convertForDisplay();
+  }, [expenses, income, currency]);
 
   useEffect(() => {
     if (darkMode) {
@@ -190,8 +240,28 @@ export default function App() {
     );
   };
 
-  const insights = generateInsights(expenses);
-  const categoryTotals = calculateCategoryTotals(expenses);
+  const insights = generateInsights(displayExpenses, displayIncome);
+  const categoryTotals = calculateCategoryTotals(displayExpenses);
+  
+  // Filter expenses based on search query
+  const filteredExpenses = displayExpenses.filter(expense =>
+    expense.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    expense.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (expense.notes && expense.notes.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const handleRefreshInsights = () => {
+    setIsRefreshingInsights(true);
+    // Force re-generation of insights by using a timestamp or similar mechanism
+    setTimeout(() => {
+      setIsRefreshingInsights(false);
+    }, 500);
+  };
+
+  // Auto-refresh insights when expenses change
+  useEffect(() => {
+    handleRefreshInsights();
+  }, [displayExpenses]);
 
   if (initializing) {
     return (
@@ -281,21 +351,33 @@ export default function App() {
             <>
               {/* Stats Overview */}
               <div className="mb-8">
-                <StatsOverview expenses={expenses} currency={currency} />
+                <StatsOverview expenses={displayExpenses} currency={currency} />
               </div>
 
               {/* Income Overview */}
               <div className="mb-8">
-                <IncomeOverview income={income} currency={currency} />
+                <IncomeOverview income={displayIncome} currency={currency} />
               </div>
 
               {/* Main Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column */}
                 <div className="lg:col-span-2 space-y-6">
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search expenses by description, category, or notes..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 text-base border border-slate-300 rounded-lg bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  
                   <ExpenseForm onAddExpense={handleAddExpense} currency={currency} />
                   <ExpenseList
-                    expenses={expenses}
+                    expenses={filteredExpenses}
                     onDeleteExpense={handleDeleteExpense}
                     onUpdateExpense={handleUpdateExpense}
                   />
@@ -303,9 +385,9 @@ export default function App() {
 
                 {/* Right Column */}
                 <div className="space-y-6">
-                  <InsightsPanel insights={insights} />
+                  <InsightsPanel insights={insights} onRefresh={handleRefreshInsights} isRefreshing={isRefreshingInsights} />
                   <SpendingChart categoryTotals={categoryTotals} />
-                  <CategoryPieChart expenses={expenses} />
+                  <CategoryPieChart expenses={displayExpenses} />
                 </div>
               </div>
             </>
@@ -328,8 +410,21 @@ export default function App() {
           {currentView === 'history' && (
             <div>
               <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Expense History</h2>
+              
+              {/* Search Bar */}
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search expenses by description, category, or notes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 text-base border border-slate-300 rounded-lg bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              
               <ExpenseList
-                expenses={expenses}
+                expenses={filteredExpenses}
                 onDeleteExpense={handleDeleteExpense}
                 onUpdateExpense={handleUpdateExpense}
               />
@@ -340,7 +435,7 @@ export default function App() {
             <div>
               <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Income History</h2>
               <IncomeList
-                income={income}
+                income={displayIncome}
                 onDeleteIncome={handleDeleteIncome}
                 onUpdateIncome={handleUpdateIncome}
                 isDarkMode={darkMode}
@@ -351,18 +446,46 @@ export default function App() {
           {currentView === 'analytics' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Analytics</h2>
-              <ExpenseTimelineGraph expenses={expenses} isDarkMode={darkMode} />
+              <ExpenseTimelineGraph expenses={displayExpenses} isDarkMode={darkMode} />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SpendingChart categoryTotals={categoryTotals} />
-                <CategoryPieChart expenses={expenses} />
+                <CategoryPieChart expenses={displayExpenses} />
               </div>
             </div>
           )}
 
           {currentView === 'insights' && (
-            <div className="max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">AI Insights</h2>
-              <InsightsPanel insights={insights} />
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">AI Insights</h2>
+                <button
+                  onClick={handleRefreshInsights}
+                  disabled={isRefreshingInsights}
+                  className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Refresh insights"
+                >
+                  <RefreshCw className={`w-5 h-5 text-slate-600 dark:text-slate-400 ${isRefreshingInsights ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <QuickSummary expenses={displayExpenses} income={displayIncome} currency={currency} />
+                <BudgetProgressTracker expenses={displayExpenses} currency={currency} />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <MonthlyComparison expenses={displayExpenses} currency={currency} />
+                <SavingsGoalProgress expenses={displayExpenses} income={displayIncome} currency={currency} />
+                <QuickActions 
+                  onAddExpense={() => setCurrentView('add-expense')}
+                  onAddIncome={() => setCurrentView('add-income')}
+                  onViewAnalytics={() => setCurrentView('analytics')}
+                  onViewInsights={() => setCurrentView('insights')}
+                  onSettings={() => setCurrentView('settings')}
+                />
+              </div>
+              
+              <InsightsPanel insights={insights} onRefresh={handleRefreshInsights} isRefreshing={isRefreshingInsights} />
             </div>
           )}
 
@@ -372,8 +495,8 @@ export default function App() {
               <AccountSettings
                 userEmail={user?.email || ''}
                 userCreatedAt={user?.createdAt || ''}
-                totalExpenses={expenses.reduce((sum, e) => sum + e.amount, 0)}
-                totalIncome={income.reduce((sum, i) => sum + i.amount, 0)}
+                totalExpenses={displayExpenses.reduce((sum, e) => sum + e.amount, 0)}
+                totalIncome={displayIncome.reduce((sum, i) => sum + i.amount, 0)}
                 expenseCount={expenses.length}
                 incomeCount={income.length}
                 isDarkMode={darkMode}
@@ -386,7 +509,7 @@ export default function App() {
         </main>
 
         {/* AI Chatbot */}
-        <AIChatbot expenses={expenses} income={income} />
+        <AIChatbot expenses={displayExpenses} income={displayIncome} />
       </div>
     </div>
   );

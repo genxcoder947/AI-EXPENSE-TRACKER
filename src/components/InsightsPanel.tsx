@@ -1,9 +1,11 @@
 import { Insight } from '../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { AlertCircle, Lightbulb, Info } from 'lucide-react';
+import { AlertCircle, Lightbulb, Info, RefreshCw } from 'lucide-react';
 
 interface InsightsPanelProps {
   insights: Insight[];
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 const insightStyles = {
@@ -27,7 +29,7 @@ const insightStyles = {
   }
 };
 
-export function InsightsPanel({ insights }: InsightsPanelProps) {
+export function InsightsPanel({ insights, onRefresh, isRefreshing }: InsightsPanelProps) {
   if (insights.length === 0) {
     return null;
   }
@@ -35,22 +37,34 @@ export function InsightsPanel({ insights }: InsightsPanelProps) {
   return (
     <Card className="bg-white border border-slate-200 shadow-sm">
       <CardHeader className="border-b border-slate-100 bg-slate-50">
-        <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-          <span className="text-xl">🧠</span>
-          AI Insights
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-2xl font-semibold text-slate-800 flex items-center gap-2">
+            <span className="text-2xl">🧠</span>
+            AI Insights
+          </CardTitle>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="p-3 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh insights"
+            >
+              <RefreshCw className={`w-6 h-6 text-slate-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="p-6 space-y-4">
         {insights.map((insight, index) => {
           const style = insightStyles[insight.type];
           const IconComponent = style.Icon;
           return (
             <div
               key={index}
-              className={`flex items-start gap-3 p-3 rounded-lg ${style.bg} border ${style.border}`}
+              className={`flex items-start gap-4 p-5 rounded-lg ${style.bg} border ${style.border}`}
             >
-              <IconComponent className={`w-5 h-5 mt-0.5 ${style.icon} flex-shrink-0`} />
-              <p className="text-sm text-slate-700 leading-relaxed">{insight.message}</p>
+              <IconComponent className={`w-6 h-6 mt-0.5 ${style.icon} flex-shrink-0`} />
+              <p className="text-base text-slate-700 leading-relaxed">{insight.message}</p>
             </div>
           );
         })}

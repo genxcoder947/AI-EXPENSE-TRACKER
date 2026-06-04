@@ -956,16 +956,16 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
                   <div
                     className={`rounded-2xl px-4 py-3 ${
                       message.sender === 'user'
-                        ? 'bg-gradient-to-r from-purple-500 to-cyan-500 text-white'
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
                         : 'bg-white/10 text-white border border-white/20'
                     }`}
                   >
                     <div className="flex items-start gap-2">
                       {message.sender === 'bot' && (
                         <div className="flex-shrink-0">
-                          <Bot className="w-4 h-4 mt-0.5 text-cyan-400" />
+                          <Bot className="w-4 h-4 mt-0.5 text-teal-400" />
                           {message.isStreaming && (
-                            <span className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse ml-1"></span>
+                            <span className="inline-block w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse ml-1"></span>
                           )}
                         </div>
                       )}
@@ -981,7 +981,7 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
                       <>
                         <button
                           onClick={() => handleCopyMessage(message.text)}
-                          className="text-slate-500 hover:text-cyan-400 transition-colors"
+                          className="text-slate-500 hover:text-teal-400 transition-colors"
                           title="Copy message"
                         >
                           <Copy className="w-3 h-3" />
@@ -1011,7 +1011,7 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
                         <button
                           key={index}
                           onClick={() => handleQuickAction(action)}
-                          className="text-xs bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 px-3 py-1.5 rounded-full border border-cyan-500/30 transition-all hover:scale-105"
+                          className="text-xs bg-teal-500/20 text-teal-400 hover:bg-teal-500/30 px-3 py-1.5 rounded-full border border-teal-500/30 transition-all hover:scale-105"
                         >
                           {action}
                         </button>
@@ -1025,11 +1025,11 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
               <div className="flex justify-start animate-fade-in">
                 <div className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <Bot className="w-4 h-4 text-cyan-400" />
+                    <Bot className="w-4 h-4 text-teal-400" />
                     <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                     </div>
                   </div>
                 </div>

@@ -600,46 +600,46 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
 
             {/* Tax Breakdown */}
             {scanResult.taxInfo.totalTax && scanResult.taxInfo.totalTax > 0 && (
-              <div className="mb-4 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                <p className="text-sm font-semibold text-purple-900 dark:text-purple-400 mb-2">
+              <div className="mb-4 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-400 mb-2">
                   Tax Breakdown
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   {scanResult.taxInfo.sgst && (
                     <div className="flex justify-between">
-                      <span className="text-purple-700 dark:text-purple-300">SGST:</span>
-                      <span className="text-purple-900 dark:text-purple-100 font-medium">
+                      <span className="text-emerald-700 dark:text-emerald-300">SGST:</span>
+                      <span className="text-emerald-900 dark:text-emerald-100 font-medium">
                         {currencySymbol}{scanResult.taxInfo.sgst.toFixed(2)}
                       </span>
                     </div>
                   )}
                   {scanResult.taxInfo.cgst && (
                     <div className="flex justify-between">
-                      <span className="text-purple-700 dark:text-purple-300">CGST:</span>
-                      <span className="text-purple-900 dark:text-purple-100 font-medium">
+                      <span className="text-emerald-700 dark:text-emerald-300">CGST:</span>
+                      <span className="text-emerald-900 dark:text-emerald-100 font-medium">
                         {currencySymbol}{scanResult.taxInfo.cgst.toFixed(2)}
                       </span>
                     </div>
                   )}
                   {scanResult.taxInfo.igst && (
                     <div className="flex justify-between">
-                      <span className="text-purple-700 dark:text-purple-300">IGST:</span>
-                      <span className="text-purple-900 dark:text-purple-100 font-medium">
+                      <span className="text-emerald-700 dark:text-emerald-300">IGST:</span>
+                      <span className="text-emerald-900 dark:text-emerald-100 font-medium">
                         {currencySymbol}{scanResult.taxInfo.igst.toFixed(2)}
                       </span>
                     </div>
                   )}
                   {scanResult.taxInfo.gst && !scanResult.taxInfo.sgst && !scanResult.taxInfo.cgst && !scanResult.taxInfo.igst && (
                     <div className="flex justify-between">
-                      <span className="text-purple-700 dark:text-purple-300">GST:</span>
-                      <span className="text-purple-900 dark:text-purple-100 font-medium">
+                      <span className="text-emerald-700 dark:text-emerald-300">GST:</span>
+                      <span className="text-emerald-900 dark:text-emerald-100 font-medium">
                         {currencySymbol}{scanResult.taxInfo.gst.toFixed(2)}
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between col-span-2 border-t border-purple-300 dark:border-purple-700 pt-2 mt-1">
-                    <span className="text-purple-900 dark:text-purple-100 font-semibold">Total Tax:</span>
-                    <span className="text-purple-900 dark:text-purple-100 font-bold">
+                  <div className="flex justify-between col-span-2 border-t border-emerald-300 dark:border-emerald-700 pt-2 mt-1">
+                    <span className="text-emerald-900 dark:text-emerald-100 font-semibold">Total Tax:</span>
+                    <span className="text-emerald-900 dark:text-emerald-100 font-bold">
                       {currencySymbol}{scanResult.taxInfo.totalTax.toFixed(2)}
                     </span>
                   </div>

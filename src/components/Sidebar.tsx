@@ -57,7 +57,7 @@ export default function Sidebar({
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
         {!isCollapsed && (
           <div className="flex items-center gap-2">
-            <Wallet className="w-6 h-6 text-purple-500" />
+            <Wallet className="w-6 h-6 text-emerald-500" />
             <span className="font-bold text-lg text-slate-800 dark:text-white">ExpenseAI</span>
           </div>
         )}
@@ -86,8 +86,8 @@ export default function Sidebar({
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                 isActive
                   ? isDarkMode
-                    ? 'bg-gradient-to-r from-purple-500 to-cyan-500 text-white'
-                    : 'bg-gradient-to-r from-purple-500 to-cyan-500 text-white'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
                   : isDarkMode
                     ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
