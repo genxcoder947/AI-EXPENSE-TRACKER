@@ -121,14 +121,20 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
 
     try {
       const result = await requestPasswordReset(email);
+      
+      // Always show reset code if returned (as backup or primary method)
       if (result.resetCode) {
-        // Email not configured, show code directly
         setIssuedResetCode(result.resetCode);
         setResetCode(result.resetCode);
-        setInfo(`Your reset code is below. It expires in ${result.expiresInMinutes ?? 60} minutes.`);
+        
+        if (result.emailSent) {
+          setInfo(`Password reset OTP sent to your email. You can also use the code below as a backup. It expires in ${result.expiresInMinutes ?? 60} minutes.`);
+        } else {
+          setInfo(`Email not configured or sending failed. Use the reset code below to reset your password. It expires in ${result.expiresInMinutes ?? 60} minutes.`);
+        }
         setView('reset');
       } else if (result.emailEnabled) {
-        // Email configured, OTP sent to email
+        // Email configured but no code returned (shouldn't happen with new backend logic)
         setInfo('A password reset OTP has been sent to your email address. Please check your inbox.');
         setView('reset');
       } else {

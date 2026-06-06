@@ -87,14 +87,14 @@ export default function UserProfile({
           }`}
           title="Account"
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg">
             {getInitials(userEmail)}
           </div>
         </button>
       )}
 
       {isCollapsed && isExpanded && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg space-y-1">
+        <div className="absolute bottom-full left-0 right-0 mb-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg space-y-1 min-w-[200px]">
           <button
             onClick={onSettingsClick}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
@@ -103,8 +103,8 @@ export default function UserProfile({
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
             }`}
           >
-            <Settings className="w-4 h-4" />
-            <span className="text-sm">Settings</span>
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            <span className="text-sm whitespace-nowrap">Settings</span>
           </button>
           <button
             onClick={onLogout}
@@ -114,8 +114,8 @@ export default function UserProfile({
                 : 'text-red-600 hover:bg-red-50 hover:text-red-700'
             }`}
           >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm">Sign out</span>
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <span className="text-sm whitespace-nowrap">Sign out</span>
           </button>
         </div>
       )}

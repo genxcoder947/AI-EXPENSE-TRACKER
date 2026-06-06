@@ -56,6 +56,44 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+def load_smtp_config() -> dict[str, Any]:
+    """Load SMTP configuration from file"""
+    config_file = Path.home() / "Library" / "Application Support" / "ExpenseAI" / "smtp_config.json"
+    if config_file.exists():
+        try:
+            with open(config_file, 'r') as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def save_smtp_config(config: dict[str, Any]) -> None:
+    """Save SMTP configuration to file"""
+    config_dir = Path.home() / "Library" / "Application Support" / "ExpenseAI"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_file = config_dir / "smtp_config.json"
+    with open(config_file, 'w') as f:
+        json.dump(config, f)
+
+def get_email_config() -> dict[str, Any]:
+    """Get email configuration from file or environment variables"""
+    smtp_config = load_smtp_config()
+    
+    if smtp_config.get('email') and smtp_config.get('password'):
+        return {
+            'smtp_server': smtp_config.get('server', 'smtp.gmail.com'),
+            'smtp_port': int(smtp_config.get('port', '587')),
+            'email': smtp_config['email'],
+            'password': smtp_config['password'],
+            'use_tls': smtp_config.get('use_tls', True),
+            'use_ssl': smtp_config.get('use_ssl', False),
+            'from_name': 'ExpenseAI',
+        }
+    
+    # Fallback to environment variables
+    return EMAIL_CONFIG
+
+
 def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
@@ -70,13 +108,14 @@ def normalize_reset_code(code: str) -> str:
 
 def send_otp_email(to_email: str, otp: str) -> bool:
     """Send OTP email to user"""
-    if not EMAIL_CONFIG['email'] or not EMAIL_CONFIG['password']:
+    email_config = get_email_config()
+    if not email_config['email'] or not email_config['password']:
         return False
     
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = 'ExpenseAI password reset code'
-        msg['From'] = f"{EMAIL_CONFIG['from_name']} <{EMAIL_CONFIG['email']}>"
+        msg['From'] = f"{email_config['from_name']} <{email_config['email']}>"
         msg['To'] = to_email
 
         text_content = f"""ExpenseAI password reset
@@ -112,23 +151,23 @@ This code expires in {RESET_HOURS * 60} minutes. If you did not request this res
         msg.attach(MIMEText(text_content, 'plain'))
         msg.attach(MIMEText(html_content, 'html'))
 
-        if EMAIL_CONFIG['use_ssl']:
+        if email_config['use_ssl']:
             server = smtplib.SMTP_SSL(
-                EMAIL_CONFIG['smtp_server'],
-                EMAIL_CONFIG['smtp_port'],
+                email_config['smtp_server'],
+                email_config['smtp_port'],
                 timeout=SMTP_TIMEOUT_SECONDS,
             )
         else:
             server = smtplib.SMTP(
-                EMAIL_CONFIG['smtp_server'],
-                EMAIL_CONFIG['smtp_port'],
+                email_config['smtp_server'],
+                email_config['smtp_port'],
                 timeout=SMTP_TIMEOUT_SECONDS,
             )
 
         with server:
-            if EMAIL_CONFIG['use_tls'] and not EMAIL_CONFIG['use_ssl']:
+            if email_config['use_tls'] and not email_config['use_ssl']:
                 server.starttls()
-            server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
+            server.login(email_config['email'], email_config['password'])
             server.send_message(msg)
         
         return True
@@ -256,6 +295,7 @@ class Database:
                         category TEXT NOT NULL,
                         date TEXT NOT NULL,
                         notes TEXT,
+                        tax REAL,
                         ai_suggested INTEGER NOT NULL DEFAULT 0,
                         created_at TEXT NOT NULL,
                         updated_at TEXT NOT NULL,
@@ -323,6 +363,7 @@ class Database:
                         category TEXT NOT NULL,
                         date TEXT NOT NULL,
                         notes TEXT,
+                        tax REAL,
                         ai_suggested INTEGER NOT NULL DEFAULT 0,
                         created_at TEXT NOT NULL,
                         updated_at TEXT NOT NULL,
@@ -526,6 +567,10 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
             self.handle_reset_password()
             return
 
+        if self.command == "POST" and path == "/api/config/smtp":
+            self.handle_save_smtp_config()
+            return
+
         if path == "/api/expenses":
             if self.command == "GET":
                 self.handle_list_expenses()
@@ -597,8 +642,21 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                     user_id = int(cursor.lastrowid)
                     token = self.create_session(conn, user_id)
                     user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        except (psycopg2.IntegrityError if self.db.use_postgres else sqlite3.IntegrityError):
-            raise ApiError(HTTPStatus.CONFLICT, "An account already exists with this email")
+        except (psycopg2.IntegrityError if self.db.use_postgres else sqlite3.IntegrityError) as e:
+            # Check if the email actually exists in the database
+            with self.db.connect() as conn:
+                if self.db.use_postgres:
+                    cur = conn.cursor()
+                    cur.execute("SELECT email FROM users WHERE email = %s", (email,))
+                    existing_user = cur.fetchone()
+                else:
+                    existing_user = conn.execute("SELECT email FROM users WHERE email = ?", (email,)).fetchone()
+                
+                if existing_user:
+                    raise ApiError(HTTPStatus.CONFLICT, "An account already exists with this email")
+                else:
+                    # This might be a database corruption or lock issue
+                    raise ApiError(HTTPStatus.INTERNAL_SERVER_ERROR, f"Database error: {str(e)}. Please try again or clear the database.")
 
         self.send_json({"user": user_payload(user), "token": token}, HTTPStatus.CREATED)
 
@@ -692,26 +750,22 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                     (hash_token(reset_token), user_id, now_iso(), add_hours(RESET_HOURS)),
                 )
 
+        # Always include reset code in response for fallback
+        response["resetCode"] = reset_token
+        response["expiresInMinutes"] = RESET_HOURS * 60
+
         # Send email if configured
         if email_enabled:
             email_sent = send_otp_email(email, reset_token)
             if not email_sent:
-                with self.db.connect() as conn:
-                    if self.db.use_postgres:
-                        cur = conn.cursor()
-                        cur.execute("DELETE FROM password_reset_tokens WHERE token_hash = %s", (hash_token(reset_token),))
-                        conn.commit()
-                    else:
-                        conn.execute("DELETE FROM password_reset_tokens WHERE token_hash = ?", (hash_token(reset_token),))
-                raise ApiError(
-                    HTTPStatus.SERVICE_UNAVAILABLE,
-                    "Could not send the reset email. Check the SMTP settings and try again.",
-                )
+                response["message"] = "Email sending failed. Use the reset code below to reset your password."
+                response["emailSent"] = False
+            else:
+                response["message"] = "Password reset OTP sent to your email. You can also use the code below as a backup."
+                response["emailSent"] = True
         else:
-            # Fallback to showing code if email not configured
-            response["message"] = "Email not configured. Use the reset code below to choose a new password."
-            response["resetCode"] = reset_token
-            response["expiresInMinutes"] = RESET_HOURS * 60
+            response["message"] = "Email not configured. Use the reset code below to reset your password."
+            response["emailSent"] = False
 
         self.send_json(response)
 
@@ -779,6 +833,19 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                 user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
 
         self.send_json({"user": user_payload(user), "token": session_token})
+
+    def handle_save_smtp_config(self) -> None:
+        data = self.read_json()
+        smtp_config = {
+            'server': str(data.get('server', 'smtp.gmail.com')),
+            'port': str(data.get('port', '587')),
+            'email': str(data.get('email', '')),
+            'password': str(data.get('password', '')),
+            'use_tls': bool(data.get('use_tls', True)),
+            'use_ssl': bool(data.get('use_ssl', False)),
+        }
+        save_smtp_config(smtp_config)
+        self.send_json({"ok": True, "message": "SMTP configuration saved successfully"})
 
     def clean_credentials(self, data: dict[str, Any]) -> tuple[str, str]:
         email = self.clean_email(data)

@@ -33,6 +33,7 @@ export function ExpenseForm({ onAddExpense, currency }: ExpenseFormProps) {
   const [category, setCategory] = useState('Other');
   const [date, setDate] = useState(getTodayString());
   const [notes, setNotes] = useState('');
+  const [tax, setTax] = useState('');
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -52,6 +53,7 @@ export function ExpenseForm({ onAddExpense, currency }: ExpenseFormProps) {
   const applyScanResult = (result: ReceiptScanResult) => {
     setDescription(result.description);
     setAmount(result.amount || '');
+    setTax(result.taxInfo?.totalTax?.toString() || '');
     setNotes(result.notes || '');
     setScanHints({ confidence: result.confidence, warnings: result.warnings, itemCount: result.itemCount });
     setFilledFromScan(true);
@@ -102,6 +104,7 @@ export function ExpenseForm({ onAddExpense, currency }: ExpenseFormProps) {
       category,
       date,
       ...(trimmedNotes ? { notes: trimmedNotes } : {}),
+      ...(tax ? { tax: parseFloat(tax) } : {}),
       aiSuggested: filledFromScan || autoCat.category === category,
     };
 
@@ -113,6 +116,7 @@ export function ExpenseForm({ onAddExpense, currency }: ExpenseFormProps) {
       setAmount('');
       setCategory('Other');
       setNotes('');
+      setTax('');
       setAiSuggestion(null);
       clearScanContext();
     } catch (err) {
@@ -232,15 +236,31 @@ export function ExpenseForm({ onAddExpense, currency }: ExpenseFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="date" className="text-sm font-medium text-slate-700">Date</Label>
+              <Label htmlFor="tax" className="text-sm font-medium text-slate-700">Tax ({currencySymbol}) <span className="font-normal text-slate-400">(optional)</span></Label>
               <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                id="tax"
+                type="number"
+                step="0.01"
+                value={tax}
+                onChange={(e) => {
+                  clearScanContext();
+                  setTax(e.target.value);
+                }}
+                placeholder="0.00"
                 className="bg-white border-slate-300 focus:border-emerald-500 focus:ring-emerald-500"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="date" className="text-sm font-medium text-slate-700">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="bg-white border-slate-300 focus:border-emerald-500 focus:ring-emerald-500"
+            />
           </div>
 
           <div className="space-y-2">

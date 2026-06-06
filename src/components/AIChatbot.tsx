@@ -595,6 +595,9 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w' | null>(null);
   const [resizeStart, setResizeStart] = useState<{ mouseX: number; mouseY: number; width: number; height: number } | null>(null);
+  const [aiModel, setAiModel] = useState<'local' | 'groq'>(() => {
+    return (localStorage.getItem('aiModel') as 'local' | 'groq') || 'local';
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesis | null>(null);
@@ -757,11 +760,90 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
     }
   };
 
-  const getBotResponse = (userMessage: string): { response: string; quickActions?: string[] } => {
-    return localAIRef.current.getResponse(userMessage, expenses, income);
+  const getBotResponse = async (userMessage: string): Promise<{ response: string; quickActions?: string[] }> => {
+    if (aiModel === 'groq') {
+      const apiKey = localStorage.getItem('groqApiKey');
+      if (!apiKey) {
+        return {
+          response: "To use Groq AI, please add your API key in Settings > AI Assistant Settings. You can get a free API key from Groq Console.",
+          quickActions: ['Go to Settings', 'Use Local AI']
+        };
+      }
+
+      try {
+        // Prepare financial context
+        const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
+        const netSavings = totalIncome - totalExpenses;
+        
+        const financialContext = `
+Current Financial Data:
+- Total Expenses: ${formatCurrency(totalExpenses)}
+- Total Income: ${formatCurrency(totalIncome)}
+- Net Savings: ${formatCurrency(netSavings)}
+- Total Transactions: ${expenses.length + income.length}
+- Expense Categories: ${[...new Set(expenses.map(e => e.category))].join(', ')}
+- Income Categories: ${[...new Set(income.map(i => i.category))].join(', ')}
+`;
+
+        const systemPrompt = `You are ExpenseAI, a helpful financial assistant. You have access to the user's financial data.
+
+${financialContext}
+
+Provide helpful, conversational responses. If the question is about their finances, use the provided data. If it's a general question, answer it helpfully. Be concise but thorough. Use markdown formatting for better readability.`;
+
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              {
+                role: 'system',
+                content: systemPrompt
+              },
+              {
+                role: 'user',
+                content: userMessage
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 1024,
+          })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          console.error('Groq API error response:', data);
+          const errorMessage = data.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+          throw new Error(errorMessage);
+        }
+
+        const botResponse = data.choices?.[0]?.message?.content || "I apologize, but I couldn't generate a response. Please try again.";
+        
+        return {
+          response: botResponse,
+          quickActions: ['View financial overview', 'Ask another question', 'Get insights']
+        };
+      } catch (error: any) {
+        console.error('Groq API error:', error);
+        const errorMessage = error.message || 'Unknown error';
+        return {
+          response: `I encountered an error connecting to Groq: ${errorMessage}\n\nPlease check:\n1. Your API key is correct\n2. You have internet connection\n3. The API key has the necessary permissions\n\nOr try using the Local AI model instead.`,
+          quickActions: ['Check API Key', 'Use Local AI']
+        };
+      }
+    } else {
+      // Use local AI
+      return localAIRef.current.getResponse(userMessage, expenses, income);
+    }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
     const userMessage: Message = {
@@ -775,8 +857,8 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
     setInputValue('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const responseData = getBotResponse(inputValue);
+    try {
+      const responseData = await getBotResponse(inputValue);
       
       // Create a streaming bot message
       const botResponse: Message = {
@@ -818,7 +900,17 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
       };
       
       streamText();
-    }, 800);
+    } catch (error) {
+      console.error('Error getting bot response:', error);
+      setIsTyping(false);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "I apologize, but I encountered an error. Please try again.",
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const handleQuickAction = (action: string) => {
@@ -876,52 +968,68 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
         >
           {/* Resize Handles */}
           <div 
-            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10"
+            className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize z-10 hover:bg-purple-500/30 transition-colors"
             onMouseDown={(e) => handleResizeStart('se', e)}
           >
-            <div className="w-full h-full bg-gradient-to-tl from-purple-500/50 to-transparent rounded-bl-lg" />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-3 h-3 border-r-2 border-b-2 border-purple-400 rounded-br-lg" />
+            </div>
           </div>
           <div 
-            className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-10"
+            className="absolute bottom-0 left-0 w-6 h-6 cursor-sw-resize z-10 hover:bg-purple-500/30 transition-colors"
             onMouseDown={(e) => handleResizeStart('sw', e)}
           >
-            <div className="w-full h-full bg-gradient-to-tr from-purple-500/50 to-transparent rounded-br-lg" />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-3 h-3 border-l-2 border-b-2 border-purple-400 rounded-bl-lg" />
+            </div>
           </div>
           <div 
-            className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-10"
+            className="absolute top-0 right-0 w-6 h-6 cursor-ne-resize z-10 hover:bg-purple-500/30 transition-colors"
             onMouseDown={(e) => handleResizeStart('ne', e)}
           >
-            <div className="w-full h-full bg-gradient-to-bl from-purple-500/50 to-transparent rounded-br-lg" />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-3 h-3 border-r-2 border-t-2 border-purple-400 rounded-tr-lg" />
+            </div>
           </div>
           <div 
-            className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-10"
+            className="absolute top-0 left-0 w-10 h-10 cursor-nw-resize z-10 hover:bg-purple-500/40 transition-colors"
             onMouseDown={(e) => handleResizeStart('nw', e)}
           >
-            <div className="w-full h-full bg-gradient-to-br from-purple-500/50 to-transparent rounded-tr-lg" />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-5 h-5 border-l-4 border-t-4 border-purple-500 rounded-tl-lg" />
+            </div>
           </div>
           <div 
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-2 cursor-n-resize z-10"
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-4 cursor-n-resize z-10 hover:bg-purple-500/30 transition-colors"
             onMouseDown={(e) => handleResizeStart('n', e)}
           >
-            <div className="w-full h-full bg-gradient-to-b from-purple-500/50 to-transparent rounded-b-lg" />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-6 h-1 bg-purple-400 rounded-full" />
+            </div>
           </div>
           <div 
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-2 cursor-s-resize z-10"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-4 cursor-s-resize z-10 hover:bg-purple-500/30 transition-colors"
             onMouseDown={(e) => handleResizeStart('s', e)}
           >
-            <div className="w-full h-full bg-gradient-to-t from-purple-500/50 to-transparent rounded-t-lg" />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-6 h-1 bg-purple-400 rounded-full" />
+            </div>
           </div>
           <div 
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-8 cursor-w-resize z-10"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-12 cursor-w-resize z-10 hover:bg-purple-500/30 transition-colors"
             onMouseDown={(e) => handleResizeStart('w', e)}
           >
-            <div className="w-full h-full bg-gradient-to-r from-purple-500/50 to-transparent rounded-r-lg" />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-1 h-6 bg-purple-400 rounded-full" />
+            </div>
           </div>
           <div 
-            className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-8 cursor-e-resize z-10"
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-12 cursor-e-resize z-10 hover:bg-purple-500/30 transition-colors"
             onMouseDown={(e) => handleResizeStart('e', e)}
           >
-            <div className="w-full h-full bg-gradient-to-l from-purple-500/50 to-transparent rounded-l-lg" />
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-1 h-6 bg-purple-400 rounded-full" />
+            </div>
           </div>
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-500 to-cyan-500 p-4 flex items-center justify-between">

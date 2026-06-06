@@ -115,6 +115,7 @@ export interface ForgotPasswordResult {
   resetCode?: string;
   expiresInMinutes?: number;
   emailEnabled?: boolean;
+  emailSent?: boolean;
 }
 
 export async function requestPasswordReset(email: string): Promise<ForgotPasswordResult> {

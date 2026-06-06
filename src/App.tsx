@@ -51,6 +51,7 @@ export default function App() {
   const [appError, setAppError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(256);
   const [currency, setCurrency] = useState(getPreferredCurrency);
   const [displayExpenses, setDisplayExpenses] = useState<Expense[]>([]);
   const [displayIncome, setDisplayIncome] = useState<Income[]>([]);
@@ -313,10 +314,15 @@ export default function App() {
         isDarkMode={darkMode}
         userEmail={user?.email || ''}
         onLogout={() => void handleLogout()}
+        sidebarWidth={sidebarWidth}
+        onSidebarWidthChange={setSidebarWidth}
       />
 
       {/* Main Content */}
-      <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+      <div 
+        className={`transition-all duration-300`}
+        style={{ marginLeft: isSidebarCollapsed ? '64px' : `${sidebarWidth}px` }}
+      >
         {/* Header */}
         <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
           <div className="max-w-6xl mx-auto px-4 py-4">
@@ -500,9 +506,10 @@ export default function App() {
                 expenseCount={expenses.length}
                 incomeCount={income.length}
                 isDarkMode={darkMode}
-                onLogout={() => void handleLogout()}
+                onLogout={handleLogout}
                 onCurrencyChange={handleCurrencyChange}
                 currentCurrency={currency}
+                onThemeToggle={() => setDarkMode(!darkMode)}
               />
             </div>
           )}
