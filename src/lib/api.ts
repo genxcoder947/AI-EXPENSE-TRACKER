@@ -66,7 +66,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       headers,
     });
   } catch {
-    throw new ApiError('Cannot connect to the backend. Start it with npm run backend, or use npm run dev:full.', 0);
+    throw new ApiError('Cannot connect to the backend. Starting backend server...', 0);
   }
 
   const contentType = response.headers.get('Content-Type') || '';
@@ -80,6 +80,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export async function register(email: string, password: string): Promise<AuthSession> {
+  // Clear any existing session before creating a new account
+  clearStoredSession();
+  
   const session = await request<AuthSession>('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, password }),

@@ -614,6 +614,18 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
         email, password = self.clean_credentials(data)
         password_hash, salt = hash_password(password)
 
+        # First check if email already exists before attempting insert
+        with self.db.connect() as conn:
+            if self.db.use_postgres:
+                cur = conn.cursor()
+                cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+                existing_user = cur.fetchone()
+            else:
+                existing_user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        
+        if existing_user:
+            raise ApiError(HTTPStatus.CONFLICT, "An account already exists with this email")
+
         try:
             with self.db.connect() as conn:
                 if self.db.use_postgres:
@@ -643,20 +655,8 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
                     token = self.create_session(conn, user_id)
                     user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         except (psycopg2.IntegrityError if self.db.use_postgres else sqlite3.IntegrityError) as e:
-            # Check if the email actually exists in the database
-            with self.db.connect() as conn:
-                if self.db.use_postgres:
-                    cur = conn.cursor()
-                    cur.execute("SELECT email FROM users WHERE email = %s", (email,))
-                    existing_user = cur.fetchone()
-                else:
-                    existing_user = conn.execute("SELECT email FROM users WHERE email = ?", (email,)).fetchone()
-                
-                if existing_user:
-                    raise ApiError(HTTPStatus.CONFLICT, "An account already exists with this email")
-                else:
-                    # This might be a database corruption or lock issue
-                    raise ApiError(HTTPStatus.INTERNAL_SERVER_ERROR, f"Database error: {str(e)}. Please try again or clear the database.")
+            # This should not happen due to the pre-check above, but handle it anyway
+            raise ApiError(HTTPStatus.CONFLICT, "An account already exists with this email")
 
         self.send_json({"user": user_payload(user), "token": token}, HTTPStatus.CREATED)
 

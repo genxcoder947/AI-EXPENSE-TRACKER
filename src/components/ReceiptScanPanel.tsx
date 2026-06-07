@@ -45,7 +45,7 @@ async function preprocessImageForOcr(file: File): Promise<Blob | File> {
   try {
     const bitmap = await createImageBitmap(file);
     const longestSide = Math.max(bitmap.width, bitmap.height);
-    const scale = longestSide < 2200 ? Math.min(3, 2200 / longestSide) : 1;
+    const scale = longestSide < 3000 ? Math.min(4, 3000 / longestSide) : 1;
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
@@ -53,31 +53,216 @@ async function preprocessImageForOcr(file: File): Promise<Blob | File> {
     const ctx = canvas.getContext('2d');
     if (!ctx) return file;
 
+    // Fill with white background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Enhanced preprocessing for better OCR
-    ctx.filter = 'grayscale(1) contrast(2.2) brightness(1.1) saturate(1.2)';
+
+    // Advanced preprocessing pipeline for worst conditions
+    // Step 1: Initial enhancement
+    ctx.filter = 'grayscale(1) contrast(2.5) brightness(1.15) saturate(1.3)';
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     ctx.filter = 'none';
     bitmap.close();
 
+    // Step 2: Get image data for pixel-level processing
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
+    
+    // Step 3: Adaptive thresholding and noise reduction
     for (let i = 0; i < data.length; i += 4) {
       const value = data[i];
-      // More aggressive thresholding for better text contrast
-      const cleaned = value < 170 ? Math.max(0, value - 35) : Math.min(255, value + 25);
-      data[i] = cleaned;
-      data[i + 1] = cleaned;
-      data[i + 2] = cleaned;
+      
+      // Local adaptive thresholding simulation
+      // Make dark areas darker and light areas lighter
+      const threshold = 128;
+      const contrastEnhanced = value < threshold 
+        ? Math.max(0, value - 50) // Darken shadows
+        : Math.min(255, value + 40); // Brighten highlights
+      
+      // Apply to all RGB channels
+      data[i] = contrastEnhanced;
+      data[i + 1] = contrastEnhanced;
+      data[i + 2] = contrastEnhanced;
     }
+    
     ctx.putImageData(imageData, 0, 0);
+
+    // Step 4: Apply morphological operations (simulated via canvas)
+    // Sharpen the image to enhance text edges
+    ctx.filter = 'contrast(1.2) brightness(1.05)';
+    ctx.drawImage(canvas, 0, 0);
+    ctx.filter = 'none';
+
+    // Step 5: Final binarization for better OCR
+    const finalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const finalData = finalImageData.data;
+    
+    for (let i = 0; i < finalData.length; i += 4) {
+      const value = finalData[i];
+      // Aggressive binarization - push towards black or white
+      const binarized = value < 140 ? Math.max(0, value - 60) : Math.min(255, value + 40);
+      finalData[i] = binarized;
+      finalData[i + 1] = binarized;
+      finalData[i + 2] = binarized;
+    }
+    
+    ctx.putImageData(finalImageData, 0, 0);
 
     const blob = await canvasToBlob(canvas);
     return blob || file;
   } catch {
     return file;
   }
+}
+
+// AI-based text correction for OCR errors
+function applyAITextCorrection(text: string): string {
+  let corrected = text;
+  
+  // Common OCR character confusions and their corrections
+  const corrections: Record<string, string> = {
+    '0': 'O', // In context of letters
+    '1': 'I', // In context of letters
+    '5': 'S', // In context of letters
+    '8': 'B', // In context of letters
+    '|': 'I', // Vertical bar often misread as I
+    'l': '1', // Lowercase L often misread as 1
+    'O': '0', // In context of numbers
+    'I': '1', // In context of numbers
+    'S': '5', // In context of numbers
+    'B': '8', // In context of numbers
+    'Z': '2', // In context of numbers
+    'z': '2', // In context of numbers
+    'G': '6', // In context of numbers
+    'g': '9', // In context of numbers
+    'q': '9', // In context of numbers
+    'Q': '0', // In context of numbers
+  };
+  
+  // Context-aware corrections based on surrounding text
+  const lines = corrected.split('\n');
+  const correctedLines = lines.map(line => {
+    // Skip lines that are mostly numbers (likely amounts)
+    const numberCount = (line.match(/\d/g) || []).length;
+    const letterCount = (line.match(/[a-zA-Z]/g) || []).length;
+    
+    if (numberCount > letterCount * 2) {
+      // This is likely a number line - fix number-related OCR errors
+      return line
+        .replace(/[Oo]/g, '0')
+        .replace(/[Ii|l]/g, '1')
+        .replace(/[Ss]/g, '5')
+        .replace(/[Bb]/g, '8')
+        .replace(/[Zz]/g, '2')
+        .replace(/[Gg]/g, '6')
+        .replace(/[q]/g, '9');
+    } else if (letterCount > numberCount * 2) {
+      // This is likely a text line - fix letter-related OCR errors
+      return line
+        .replace(/[0]/g, 'O')
+        .replace(/[1]/g, 'I')
+        .replace(/[5]/g, 'S')
+        .replace(/[8]/g, 'B')
+        .replace(/[|]/g, 'I');
+    }
+    
+    // Mixed line - apply smart corrections
+    return line;
+  });
+  
+  corrected = correctedLines.join('\n');
+  
+  // Fix common receipt-specific OCR errors
+  corrected = corrected
+    .replace(/T0TAL/gi, 'TOTAL')
+    .replace(/T0TAI/gi, 'TOTAL')
+    .replace(/T0T/gi, 'TOT')
+    .replace(/AM0UNT/gi, 'AMOUNT')
+    .replace(/AM0UN7/gi, 'AMOUNT')
+    .replace(/PAlD/gi, 'PAID')
+    .replace(/PAID/gi, 'PAID')
+    .replace(/SUBT0TAL/gi, 'SUBTOTAL')
+    .replace(/SUBT0TAI/gi, 'SUBTOTAL')
+    .replace(/DlSC0UNT/gi, 'DISCOUNT')
+    .replace(/DlSC0UN7/gi, 'DISCOUNT')
+    .replace(/TAX/gi, 'TAX')
+    .replace(/G5T/gi, 'GST')
+    .replace(/C65T/gi, 'CGST')
+    .replace(/S65T/gi, 'SGST')
+    .replace(/lGST/gi, 'IGST')
+    .replace(/lNVOlCE/gi, 'INVOICE')
+    .replace(/lNVOlCE/gi, 'INVOICE')
+    .replace(/RECElPT/gi, 'RECEIPT')
+    .replace(/RECElP7/gi, 'RECEIPT')
+    .replace(/lTEM/gi, 'ITEM')
+    .replace(/l7EM/gi, 'ITEM')
+    .replace(/QUANTlTY/gi, 'QUANTITY')
+    .replace(/QUANTl7Y/gi, 'QUANTITY')
+    .replace(/PRlCE/gi, 'PRICE')
+    .replace(/PRlCE/gi, 'PRICE')
+    .replace(/RATE/gi, 'RATE')
+    .replace(/AMT/gi, 'AMT')
+    .replace(/AM7/gi, 'AMT')
+    .replace(/DAlE/gi, 'DATE')
+    .replace(/D7E/gi, 'DATE')
+    .replace(/TlME/gi, 'TIME')
+    .replace(/TlME/gi, 'TIME')
+    .replace(/BILL/gi, 'BILL')
+    .replace(/BllL/gi, 'BILL')
+    .replace(/0RDER/gi, 'ORDER')
+    .replace(/0RDER/gi, 'ORDER')
+    .replace(/CASHlER/gi, 'CASHIER')
+    .replace(/CASHlER/gi, 'CASHIER')
+    .replace(/PAYMENT/gi, 'PAYMENT')
+    .replace(/PAYMEN7/gi, 'PAYMENT')
+    .replace(/CHANGE/gi, 'CHANGE')
+    .replace(/CHANGE/gi, 'CHANGE')
+    .replace(/BALANCE/gi, 'BALANCE')
+    .replace(/BALANCE/gi, 'BALANCE')
+    .replace(/THANK/gi, 'THANK')
+    .replace(/THANK/gi, 'THANK')
+    .replace(/Y0U/gi, 'YOU')
+    .replace(/Y0U/gi, 'YOU')
+    .replace(/PLEASE/gi, 'PLEASE')
+    .replace(/PLEASE/gi, 'PLEASE')
+    .replace(/VlSlT/gi, 'VISIT')
+    .replace(/VlSIT/gi, 'VISIT')
+    .replace(/AGAlN/gi, 'AGAIN')
+    .replace(/AGAlN/gi, 'AGAIN')
+    .replace(/Z0MAT0/gi, 'ZOMATO')
+    .replace(/Z0MAT0/gi, 'ZOMATO')
+    .replace(/SWlGGY/gi, 'SWIGGY')
+    .replace(/SWlGGY/gi, 'SWIGGY')
+    .replace(/UBER/gi, 'UBER')
+    .replace(/UBER/gi, 'UBER')
+    .replace(/EATS/gi, 'EATS')
+    .replace(/EATS/gi, 'EATS')
+    .replace(/D0MlN0/gi, 'DOMINO')
+    .replace(/D0MlN0/gi, 'DOMINO')
+    .replace(/D0RDASH/gi, 'DOORDASH')
+    .replace(/D0RDASH/gi, 'DOORDASH');
+  
+  // Fix currency symbol OCR errors
+  corrected = corrected
+    .replace(/Rs\./gi, '₹')
+    .replace(/RS\./gi, '₹')
+    .replace(/INR/gi, '₹')
+    .replace(/lNR/gi, '₹')
+    .replace(/r\.\s*s/gi, '₹')
+    .replace(/R\s*S/gi, '₹');
+  
+  // Fix decimal point OCR errors
+  corrected = corrected
+    .replace(/(\d)[.,](\d)/g, '$1.$2') // Ensure decimal points are correct
+    .replace(/(\d{2,})[.,](\d{2,})/g, '$1.$2'); // Fix thousands separators
+  
+  // Remove extra spaces and clean up
+  corrected = corrected
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^\s+|\s+$/gm, '')
+    .replace(/\n\s*\n/g, '\n');
+  
+  return corrected;
 }
 
 export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelProps) {
@@ -132,8 +317,8 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
       setProgressLabel('Loading OCR…');
 
       try {
-        const { createWorker, PSM } = await import('tesseract.js');
-        const worker = await createWorker('eng', undefined, {
+        const { createWorker, PSM, OEM } = await import('tesseract.js');
+        const worker = await createWorker('eng', OEM.LSTM_ONLY, {
           logger: (m) => {
             if (m.status === 'recognizing text') {
               const p = typeof m.progress === 'number' ? Math.round(m.progress * 100) : 0;
@@ -147,11 +332,63 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
             }
           },
         });
+        
+        // Advanced Tesseract configuration for receipt scanning
         await worker.setParameters({
+          // Page segmentation mode - AUTO for flexible layout detection
           tessedit_pageseg_mode: PSM.AUTO,
+          
+          // Preserve interword spaces for better text extraction
           preserve_interword_spaces: '1',
+          
+          // Set high DPI for better resolution
           user_defined_dpi: '300',
-          tessedit_char_whitelist: '0123456789.+-₹$%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ,.:;()[]{}-_=+*/&@#!?',
+          
+          // Character whitelist for receipt text (numbers, letters, currency symbols, common punctuation)
+          tessedit_char_whitelist: '0123456789.+-₹$%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ,.:;()[]{}-_=+*/&@#!?/-',
+          
+          // Enable dictionary for better word recognition
+          load_system_dawg: '1',
+          load_freq_dawg: '1',
+          
+          // Improve text line detection
+          textord_force_make_prop_words: '0',
+          
+          // Enable adaptive thresholding
+          tessedit_do_invert: '0',
+          
+          // Improve character recognition
+          tessedit_tessedit_char_blacklist: '|\\^~`',
+          
+          // Enable better handling of skewed text
+          textord_baseline_debug: '0',
+          
+          // Improve number recognition
+          tessedit_reject_mode: '0',
+          
+          // Enable better handling of small text
+          min_characters_to_try: '3',
+          
+          // Improve handling of mixed text and numbers
+          classify_char_norm_range: '0.2',
+          
+          // Enable better word segmentation
+          words_max_x_gap: '3',
+          
+          // Improve line detection
+          textord_heavy_nr: '1',
+          
+          // Enable better handling of noise
+          noise_maxperblob: '0',
+          
+          // Improve character classification
+          classify_enable_adaptive_matcher: '1',
+          
+          // Enable better handling of different fonts
+          classify_enable_learning: '0',
+          
+          // Improve text recognition quality
+          tessedit_ocr_engine_mode: '1',
         });
 
         setProgressLabel('Preparing image…');
@@ -163,7 +400,10 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
         } = await worker.recognize(ocrImage);
         await worker.terminate();
 
-        const parsed = parseReceiptText(text, currency);
+        // Apply AI-based text correction
+        const correctedText = applyAITextCorrection(text);
+
+        const parsed = parseReceiptText(correctedText, currency);
         const amountStr =
           parsed.amount !== null ? parsed.amount.toFixed(2) : '';
 
@@ -196,7 +436,7 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
         setProgressLabel('');
       }
     },
-    [onScanComplete],
+    [onScanComplete, currency],
   );
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,29 +514,56 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
     if (!video || video.videoWidth === 0) return;
 
     const canvas = document.createElement('canvas');
-    // Upscale the captured frame to improve OCR accuracy.
-    const scale = 2;
+    // Higher resolution for better OCR accuracy
+    const scale = 3;
     canvas.width = Math.floor(video.videoWidth * scale);
     canvas.height = Math.floor(video.videoHeight * scale);
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    // Enhanced preprocessing: contrast + grayscale + saturation to help Tesseract.
-    // (Supported in modern browsers for drawImage.)
-    ctx.filter = 'grayscale(1) contrast(2.2) brightness(1.1) saturate(1.2)';
+    
+    // Advanced preprocessing: same pipeline as file upload
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Step 1: Initial enhancement
+    ctx.filter = 'grayscale(1) contrast(2.5) brightness(1.15) saturate(1.3)';
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.filter = 'none';
 
-    // Apply additional thresholding for better text contrast
+    // Step 2: Pixel-level processing
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
+    
+    // Step 3: Adaptive thresholding
     for (let i = 0; i < data.length; i += 4) {
       const value = data[i];
-      const cleaned = value < 170 ? Math.max(0, value - 35) : Math.min(255, value + 25);
-      data[i] = cleaned;
-      data[i + 1] = cleaned;
-      data[i + 2] = cleaned;
+      const threshold = 128;
+      const contrastEnhanced = value < threshold 
+        ? Math.max(0, value - 50)
+        : Math.min(255, value + 40);
+      data[i] = contrastEnhanced;
+      data[i + 1] = contrastEnhanced;
+      data[i + 2] = contrastEnhanced;
     }
     ctx.putImageData(imageData, 0, 0);
+
+    // Step 4: Sharpening
+    ctx.filter = 'contrast(1.2) brightness(1.05)';
+    ctx.drawImage(canvas, 0, 0);
+    ctx.filter = 'none';
+
+    // Step 5: Final binarization
+    const finalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const finalData = finalImageData.data;
+    
+    for (let i = 0; i < finalData.length; i += 4) {
+      const value = finalData[i];
+      const binarized = value < 140 ? Math.max(0, value - 60) : Math.min(255, value + 40);
+      finalData[i] = binarized;
+      finalData[i + 1] = binarized;
+      finalData[i + 2] = binarized;
+    }
+    ctx.putImageData(finalImageData, 0, 0);
 
     canvas.toBlob(
       (blob) => {

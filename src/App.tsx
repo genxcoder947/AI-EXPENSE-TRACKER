@@ -180,11 +180,30 @@ export default function App() {
   };
 
   const handleSignUp = async (email: string, password: string) => {
+    // First logout any existing session
+    try {
+      await logout();
+    } catch (e) {
+      // Ignore logout errors
+    }
+    
+    // Clear all existing user data
+    setUser(null);
+    setExpenses([]);
+    setIncome([]);
+    setAppError(null);
+    
+    // Clear all localStorage data
+    localStorage.clear();
+    
+    // Register new account
     const session = await register(email, password);
     setUser(session.user);
     await loadUserExpenses();
     await loadUserIncome();
-    setAppError(null);
+    
+    // Force page reload to clear any cached state
+    window.location.reload();
   };
 
   const handleLogout = async () => {
@@ -304,7 +323,14 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-violet-500/15 to-fuchsia-500/15 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+      </div>
+
       {/* Sidebar */}
       <Sidebar
         currentView={currentView}
@@ -320,15 +346,15 @@ export default function App() {
 
       {/* Main Content */}
       <div 
-        className={`transition-all duration-300`}
+        className={`transition-all duration-300 relative z-10`}
         style={{ marginLeft: isSidebarCollapsed ? '64px' : `${sidebarWidth}px` }}
       >
         {/* Header */}
-        <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-10 shadow-sm">
+        <header className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-3xl border-b border-white/20 dark:border-slate-700/20 sticky top-0 z-10 shadow-lg">
           <div className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-500/80 to-purple-500/80 backdrop-blur-xl rounded-2xl flex items-center justify-center shadow-lg shadow-pink-500/20 border border-white/20">
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -337,13 +363,13 @@ export default function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="px-4 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-semibold rounded-xl border border-emerald-200 dark:border-emerald-700/50 shadow-sm">
+                <span className="px-4 py-2 bg-gradient-to-r from-pink-50/80 to-purple-50/80 dark:from-pink-900/30 dark:to-purple-900/30 backdrop-blur-xl text-pink-700 dark:text-pink-300 text-sm font-semibold rounded-xl border border-pink-200/50 dark:border-pink-700/50 shadow-sm">
                   {expenses.length} expenses
                 </span>
-                <button onClick={toggleTheme} className="p-3 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 hover:from-slate-200 hover:to-slate-300 dark:hover:from-slate-600 dark:hover:to-slate-500 transition-all shadow-sm">
+                <button onClick={toggleTheme} className="p-3 rounded-xl bg-white/60 dark:bg-slate-700/60 backdrop-blur-xl border border-white/20 dark:border-slate-600/20 hover:bg-white/80 dark:hover:bg-slate-600/80 transition-all shadow-sm">
                   {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-yellow-600" />}
                 </button>
-                <button onClick={() => void handleLogout()} className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 text-white font-semibold hover:from-rose-600 hover:to-red-700 transition-all shadow-lg shadow-rose-500/20">
+                <button onClick={() => void handleLogout()} className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500/80 to-purple-500/80 backdrop-blur-xl text-white font-semibold hover:from-pink-600/80 hover:to-purple-600/80 transition-all shadow-lg shadow-pink-500/20 border border-white/20">
                   Logout
                 </button>
               </div>
@@ -352,7 +378,7 @@ export default function App() {
         </header>
 
         {/* Main Content Area */}
-        <main className="max-w-6xl mx-auto px-4 py-8">
+        <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
           {currentView === 'dashboard' && (
             <>
               {/* Stats Overview */}
@@ -377,7 +403,7 @@ export default function App() {
                       placeholder="Search expenses by description, category, or notes..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 text-base border border-slate-300 rounded-lg bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full pl-12 pr-4 py-3 text-base border border-white/20 dark:border-slate-600/20 rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500/50 transition-all shadow-sm"
                     />
                   </div>
                   
@@ -434,7 +460,7 @@ export default function App() {
                   placeholder="Search expenses by description, category, or notes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-base border border-slate-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                  className="w-full pl-12 pr-4 py-4 text-base border border-white/20 dark:border-slate-600/20 rounded-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500/50 transition-all shadow-sm"
                 />
               </div>
               
@@ -485,7 +511,7 @@ export default function App() {
                 <button
                   onClick={handleRefreshInsights}
                   disabled={isRefreshingInsights}
-                  className="p-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  className="p-3 rounded-xl bg-white/60 dark:bg-slate-700/60 backdrop-blur-xl border border-white/20 dark:border-slate-600/20 hover:bg-white/80 dark:hover:bg-slate-600/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   title="Refresh insights"
                 >
                   <RefreshCw className={`w-5 h-5 text-slate-600 dark:text-slate-400 ${isRefreshingInsights ? 'animate-spin' : ''}`} />

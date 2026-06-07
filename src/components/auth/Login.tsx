@@ -16,13 +16,13 @@ type LoginProps = {
 
 function ResetCodeBox({ code, onCopy }: { code: string; onCopy: () => void }) {
   return (
-    <div className="rounded-lg border border-pink-500/30 bg-pink-500/10 p-4 backdrop-blur-sm">
+    <div className="rounded-lg border border-pink-500/20 bg-pink-500/5 backdrop-blur-xl p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-pink-400 mb-2">Your reset code</p>
       <p className="mt-1 break-all font-mono text-lg text-white font-bold tracking-wider">{code}</p>
       <button
         type="button"
         onClick={onCopy}
-        className="mt-3 text-xs font-semibold text-pink-400 hover:text-pink-300 flex items-center gap-2 mx-auto"
+        className="mt-3 text-xs font-semibold text-pink-400 hover:text-pink-300 flex items-center gap-2 mx-auto transition-all"
       >
         <ArrowRight className="w-4 h-4" />
         Copy code
@@ -280,17 +280,17 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
 
             {/* Feature highlights */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
                 <Sparkles className="w-8 h-8 text-pink-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Smart AI</h3>
                 <p className="text-slate-400 text-xs mt-1">Intelligent categorization</p>
               </div>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
                 <Zap className="w-8 h-8 text-purple-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Fast</h3>
                 <p className="text-slate-400 text-xs mt-1">Lightning quick insights</p>
               </div>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
                 <Lock className="w-8 h-8 text-blue-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Secure</h3>
                 <p className="text-slate-400 text-xs mt-1">Your data stays local</p>
@@ -299,12 +299,12 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
 
             {/* Additional AI features */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
                 <TrendingUp className="w-8 h-8 text-fuchsia-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Analytics</h3>
                 <p className="text-slate-400 text-xs mt-1">Smart spending insights</p>
               </div>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all">
                 <Wallet className="w-8 h-8 text-cyan-400 mb-2" />
                 <h3 className="text-white font-semibold text-sm">Budgeting</h3>
                 <p className="text-slate-400 text-xs mt-1">AI-powered suggestions</p>
@@ -314,15 +314,20 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
 
           {/* Right side - Login Form */}
           <div className="w-full max-w-md mx-auto">
-            <Card className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl p-8 space-y-6">
+            <Card className="bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl p-8 space-y-6 relative overflow-hidden">
+              {/* Glass shine effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
+              
               {/* Mobile branding */}
-              <div className="lg:hidden flex items-center gap-3 justify-center mb-6">
+              <div className="lg:hidden flex items-center gap-3 justify-center mb-6 relative z-10">
                 <Brain className="w-10 h-10 text-pink-400" />
                 <h2 className="text-3xl font-bold text-white">ExpenseAI</h2>
               </div>
 
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl mb-4 shadow-lg">
+              <div className="text-center relative z-10">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-500/30 to-purple-500/30 backdrop-blur-xl rounded-2xl mb-4 shadow-lg border border-white/20">
                   {view === 'login' && <Lock className="w-8 h-8 text-white" />}
                   {view === 'signup' && <Sparkles className="w-8 h-8 text-white" />}
                   {(view === 'forgot' || view === 'reset') && <Mail className="w-8 h-8 text-white" />}
@@ -332,7 +337,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
               </div>
 
               {view === 'forgot' && (
-                <form onSubmit={handleForgotPassword} className="space-y-4">
+                <form onSubmit={handleForgotPassword} className="space-y-4 relative z-10">
                   <p className="text-xs font-semibold uppercase tracking-wide text-pink-400">
                     Step 1 of 2 — Get your reset code
                   </p>
@@ -346,20 +351,20 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your account email"
-                        className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20"
+                        className="w-full pl-10 bg-white/5 backdrop-blur-xl border border-white/10 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all"
                         disabled={loading}
                       />
                     </div>
                   </div>
                   {info && <p className="text-sm text-pink-400">{info}</p>}
                   {error && <p className="text-sm text-red-400">{error}</p>}
-                  <Button type="submit" className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-semibold shadow-lg" disabled={loading}>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-pink-500/80 to-purple-500/80 backdrop-blur-xl hover:from-pink-600/80 hover:to-purple-600/80 text-white font-semibold shadow-lg border border-white/20 transition-all" disabled={loading}>
                     {loading ? 'Sending reset code...' : 'Get reset code'}
                   </Button>
                   {issuedResetCode && (
                     <Button
                       type="button"
-                      className="w-full bg-white/10 border border-white/20 text-white hover:bg-white/20 font-semibold"
+                      className="w-full bg-white/5 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 font-semibold transition-all"
                       onClick={() => switchView('reset')}
                     >
                       Continue to set new password
@@ -369,7 +374,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
               )}
 
               {view === 'reset' && (
-                <form onSubmit={handleResetPassword} className="space-y-4">
+                <form onSubmit={handleResetPassword} className="space-y-4 relative z-10">
                   <p className="text-xs font-semibold uppercase tracking-wide text-pink-400">
                     Step 2 of 2 — Create your new password
                   </p>
@@ -385,12 +390,12 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                       value={resetCode}
                       onChange={(e) => setResetCode(e.target.value)}
                       placeholder="Paste your reset code"
-                      className="w-full font-mono text-sm bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20"
+                      className="w-full font-mono text-sm bg-white/5 backdrop-blur-xl border border-white/10 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all"
                       disabled={loading}
                       autoComplete="one-time-code"
                     />
                   </div>
-                  <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-4">
+                  <div className="rounded-lg border border-white/10 bg-white/5 backdrop-blur-xl p-4 space-y-4">
                     <p className="text-sm font-medium text-white">
                       Enter your new password below
                     </p>
@@ -404,13 +409,13 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="At least 6 characters"
-                          className="w-full pl-10 pr-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20"
+                          className="w-full pl-10 pr-10 bg-white/5 backdrop-blur-xl border border-white/10 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all"
                           disabled={loading}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-all"
                         >
                           {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
@@ -426,21 +431,21 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Re-enter your new password"
-                          className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20"
+                          className="w-full pl-10 bg-white/5 backdrop-blur-xl border border-white/10 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all"
                           disabled={loading}
                         />
                       </div>
                     </div>
                   </div>
                   {error && <p className="text-sm text-red-400">{error}</p>}
-                  <Button type="submit" className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-semibold shadow-lg" disabled={loading}>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-pink-500/80 to-purple-500/80 backdrop-blur-xl hover:from-pink-600/80 hover:to-purple-600/80 text-white font-semibold shadow-lg border border-white/20 transition-all" disabled={loading}>
                     {loading ? 'Updating password...' : 'Set new password'}
                   </Button>
                 </form>
               )}
 
               {(view === 'login' || view === 'signup') && (
-                <form onSubmit={handleLoginOrSignUp} className="space-y-4">
+                <form onSubmit={handleLoginOrSignUp} className="space-y-4 relative z-10">
                   <div>
                     <Label htmlFor="email" className="text-slate-300">Email</Label>
                     <div className="relative">
@@ -451,7 +456,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email"
-                        className="w-full pl-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20"
+                        className="w-full pl-10 bg-white/5 backdrop-blur-xl border border-white/10 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all"
                         disabled={loading}
                       />
                     </div>
@@ -466,13 +471,13 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your password"
-                        className="w-full pl-10 pr-10 bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20"
+                        className="w-full pl-10 pr-10 bg-white/5 backdrop-blur-xl border border-white/10 text-white placeholder-slate-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all"
                         disabled={loading}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-all"
                       >
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
@@ -481,7 +486,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                   {view === 'login' && (
                     <p className="text-right text-sm">
                       <span
-                        className="text-pink-400 hover:text-pink-300 cursor-pointer"
+                        className="text-pink-400 hover:text-pink-300 cursor-pointer transition-all"
                         onClick={() => switchView('forgot')}
                       >
                         Forgot password?
@@ -489,7 +494,7 @@ export default function Login({ onLogin, onSignUp, onPasswordReset }: LoginProps
                     </p>
                   )}
                   {error && <p className="text-sm text-red-400">{error}</p>}
-                  <Button type="submit" className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-semibold shadow-lg" disabled={loading}>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-pink-500/80 to-purple-500/80 backdrop-blur-xl hover:from-pink-600/80 hover:to-purple-600/80 text-white font-semibold shadow-lg border border-white/20 transition-all" disabled={loading}>
                     {loading
                       ? view === 'login'
                         ? 'Signing in...'
