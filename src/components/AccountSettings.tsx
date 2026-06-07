@@ -65,6 +65,9 @@ export default function AccountSettings({
   const [smtpPassword, setSmtpPassword] = useState<string>(() => {
     return localStorage.getItem('smtpPassword') || '';
   });
+  const [username, setUsername] = useState<string>(() => {
+    return localStorage.getItem('username') || '';
+  });
 
   useEffect(() => {
     loadExchangeRates();
@@ -122,6 +125,11 @@ export default function AccountSettings({
       console.error('Failed to save email settings:', error);
       alert('Failed to save email settings. Please try again.');
     }
+  };
+
+  const handleSaveUsername = () => {
+    localStorage.setItem('username', username);
+    alert('Username saved successfully!');
   };
 
   const handleRefreshRates = async () => {
@@ -285,6 +293,13 @@ export default function AccountSettings({
             </div>
           </div>
           <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-700">
+            <User className="w-7 h-7 text-slate-500" />
+            <div className="flex-1">
+              <p className="text-base text-slate-600 dark:text-slate-400">Username</p>
+              <p className="text-lg font-semibold text-slate-800 dark:text-white">{username || 'Not set'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-700">
             <Calendar className="w-7 h-7 text-slate-500" />
             <div className="flex-1">
               <p className="text-base text-slate-600 dark:text-slate-400">Member Since</p>
@@ -370,6 +385,30 @@ export default function AccountSettings({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-700">
+            <div className="flex items-center gap-4">
+              <User className="w-7 h-7 text-slate-500" />
+              <div>
+                <p className="text-lg font-medium text-slate-800 dark:text-white">Username</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Set your display name</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter username"
+                className="w-48"
+              />
+              <Button 
+                onClick={handleSaveUsername}
+                className="px-4 py-2 text-base bg-emerald-500 hover:bg-emerald-600 text-white"
+              >
+                Save
+              </Button>
+            </div>
+          </div>
           <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-700">
             <div className="flex items-center gap-4">
               <Lock className="w-7 h-7 text-slate-500" />

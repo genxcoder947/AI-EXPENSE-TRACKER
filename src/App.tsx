@@ -304,7 +304,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Sidebar */}
       <Sidebar
         currentView={currentView}
@@ -324,26 +324,26 @@ export default function App() {
         style={{ marginLeft: isSidebarCollapsed ? '64px' : `${sidebarWidth}px` }}
       >
         {/* Header */}
-        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+        <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-10 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-                  <Sparkles className="w-5 h-5 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">ExpenseAI</h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Smart expense tracking</p>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">ExpenseAI</h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Smart expense tracking</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-200 dark:text-emerald-800 text-xs font-medium rounded-full">
+              <div className="flex items-center gap-3">
+                <span className="px-4 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-semibold rounded-xl border border-emerald-200 dark:border-emerald-700/50 shadow-sm">
                   {expenses.length} expenses
                 </span>
-                <button onClick={toggleTheme} className="p-2 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600">
-                  {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-yellow-400" />}
+                <button onClick={toggleTheme} className="p-3 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 hover:from-slate-200 hover:to-slate-300 dark:hover:from-slate-600 dark:hover:to-slate-500 transition-all shadow-sm">
+                  {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-yellow-600" />}
                 </button>
-                <button onClick={() => void handleLogout()} className="p-2 rounded bg-red-100 text-red-700 dark:bg-rose-900/40 dark:text-rose-200 hover:bg-red-200 dark:hover:bg-rose-900/60">
+                <button onClick={() => void handleLogout()} className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 text-white font-semibold hover:from-rose-600 hover:to-red-700 transition-all shadow-lg shadow-rose-500/20">
                   Logout
                 </button>
               </div>
@@ -401,21 +401,30 @@ export default function App() {
 
           {currentView === 'add-expense' && (
             <div className="max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Add New Expense</h2>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-2">Add New Expense</h2>
+                <p className="text-slate-500 dark:text-slate-400">Track your spending with ease</p>
+              </div>
               <ExpenseForm onAddExpense={handleAddExpense} currency={currency} />
             </div>
           )}
 
           {currentView === 'add-income' && (
             <div className="max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Add New Income</h2>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-2">Add New Income</h2>
+                <p className="text-slate-500 dark:text-slate-400">Track your earnings with ease</p>
+              </div>
               <IncomeForm onAddIncome={handleAddIncome} />
             </div>
           )}
 
           {currentView === 'history' && (
             <div>
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Expense History</h2>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-2">Expense History</h2>
+                <p className="text-slate-500 dark:text-slate-400">View and manage all your expenses</p>
+              </div>
               
               {/* Search Bar */}
               <div className="relative mb-6">
@@ -425,7 +434,7 @@ export default function App() {
                   placeholder="Search expenses by description, category, or notes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 text-base border border-slate-300 rounded-lg bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full pl-12 pr-4 py-4 text-base border border-slate-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                 />
               </div>
               
@@ -439,7 +448,10 @@ export default function App() {
 
           {currentView === 'income-history' && (
             <div>
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Income History</h2>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-2">Income History</h2>
+                <p className="text-slate-500 dark:text-slate-400">View and manage all your income</p>
+              </div>
               <IncomeList
                 income={displayIncome}
                 onDeleteIncome={handleDeleteIncome}
@@ -451,7 +463,10 @@ export default function App() {
 
           {currentView === 'analytics' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Analytics</h2>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-2">Analytics</h2>
+                <p className="text-slate-500 dark:text-slate-400">Visualize your spending patterns</p>
+              </div>
               <ExpenseTimelineGraph expenses={displayExpenses} isDarkMode={darkMode} />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SpendingChart categoryTotals={categoryTotals} />
@@ -462,12 +477,15 @@ export default function App() {
 
           {currentView === 'insights' && (
             <div className="max-w-6xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">AI Insights</h2>
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-2">AI Insights</h2>
+                  <p className="text-slate-500 dark:text-slate-400">Smart recommendations powered by AI</p>
+                </div>
                 <button
                   onClick={handleRefreshInsights}
                   disabled={isRefreshingInsights}
-                  className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   title="Refresh insights"
                 >
                   <RefreshCw className={`w-5 h-5 text-slate-600 dark:text-slate-400 ${isRefreshingInsights ? 'animate-spin' : ''}`} />
@@ -497,7 +515,10 @@ export default function App() {
 
           {currentView === 'settings' && (
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Account Settings</h2>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-2">Account Settings</h2>
+                <p className="text-slate-500 dark:text-slate-400">Manage your preferences and account</p>
+              </div>
               <AccountSettings
                 userEmail={user?.email || ''}
                 userCreatedAt={user?.createdAt || ''}

@@ -591,6 +591,11 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [selectedVoice, setSelectedVoice] = useState<string>(() => {
+    return localStorage.getItem('selectedVoice') || '';
+  });
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [showVoiceSelector, setShowVoiceSelector] = useState(false);
   const [chatSize, setChatSize] = useState({ width: 384, height: 384 }); // w-96 = 384px, h-96 = 384px
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w' | null>(null);
@@ -710,6 +715,21 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
     // Initialize speech synthesis
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       synthesisRef.current = window.speechSynthesis;
+      
+      // Load available voices
+      const loadVoices = () => {
+        const voices = synthesisRef.current?.getVoices() || [];
+        setAvailableVoices(voices);
+      };
+      
+      loadVoices();
+      
+      // Voices load asynchronously
+      synthesisRef.current?.addEventListener('voiceschanged', loadVoices);
+      
+      return () => {
+        synthesisRef.current?.removeEventListener('voiceschanged', loadVoices);
+      };
     }
 
     return () => {
@@ -746,11 +766,25 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
     utterance.pitch = 1;
     utterance.volume = 1;
     
+    // Set selected voice if available
+    if (selectedVoice) {
+      const voice = availableVoices.find(v => v.name === selectedVoice);
+      if (voice) {
+        utterance.voice = voice;
+      }
+    }
+    
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     
     synthesisRef.current.speak(utterance);
+  };
+
+  const handleVoiceSelect = (voiceName: string) => {
+    setSelectedVoice(voiceName);
+    localStorage.setItem('selectedVoice', voiceName);
+    setShowVoiceSelector(false);
   };
 
   const toggleVoice = () => {
@@ -776,21 +810,74 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
         const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
         const netSavings = totalIncome - totalExpenses;
         
+        // Calculate spending patterns
+        const expenseByCategory = expenses.reduce((acc, e) => {
+          acc[e.category] = (acc[e.category] || 0) + e.amount;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        const topExpenseCategory = Object.entries(expenseByCategory).sort((a, b) => b[1] - a[1])[0];
+        const savingsRate = totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : '0';
+        
+        // Get recent transactions
+        const recentExpenses = expenses.slice(-5).reverse();
+        const recentIncome = income.slice(-3).reverse();
+        
         const financialContext = `
-Current Financial Data:
-- Total Expenses: ${formatCurrency(totalExpenses)}
-- Total Income: ${formatCurrency(totalIncome)}
-- Net Savings: ${formatCurrency(netSavings)}
-- Total Transactions: ${expenses.length + income.length}
-- Expense Categories: ${[...new Set(expenses.map(e => e.category))].join(', ')}
-- Income Categories: ${[...new Set(income.map(i => i.category))].join(', ')}
+=== YOUR FINANCIAL SNAPSHOT ===
+💰 Total Income: ${formatCurrency(totalIncome)}
+💸 Total Expenses: ${formatCurrency(totalExpenses)}
+📊 Net Savings: ${formatCurrency(netSavings)}
+📈 Savings Rate: ${savingsRate}%
+🔥 Top Spending Category: ${topExpenseCategory ? `${topExpenseCategory[0]} (${formatCurrency(topExpenseCategory[1])})` : 'N/A'}
+📝 Total Transactions: ${expenses.length + income.length}
+
+=== RECENT ACTIVITY ===
+Recent Expenses:
+${recentExpenses.map(e => `• ${e.description}: ${formatCurrency(e.amount)} (${e.category})`).join('\n') || 'No recent expenses'}
+
+Recent Income:
+${recentIncome.map(i => `• ${i.description}: ${formatCurrency(i.amount)} (${i.category})`).join('\n') || 'No recent income'}
+
+=== SPENDING BY CATEGORY ===
+${Object.entries(expenseByCategory).map(([cat, amount]) => `• ${cat}: ${formatCurrency(amount)}`).join('\n') || 'No expenses yet'}
 `;
 
-        const systemPrompt = `You are ExpenseAI, a helpful financial assistant. You have access to the user's financial data.
+        const systemPrompt = `You are ExpenseAI, a sophisticated and friendly financial assistant with a warm, conversational personality. Think of yourself as a smart, helpful financial companion who genuinely cares about the user's financial well-being.
 
+=== YOUR PERSONALITY ===
+- Be warm, friendly, and conversational (like a helpful friend, not a robot)
+- Use emojis occasionally to add warmth and visual appeal
+- Be proactive in offering insights and suggestions
+- Show genuine interest in their financial journey
+- Be encouraging and positive, even when discussing challenges
+- Use natural, conversational language (avoid being overly formal)
+- Ask follow-up questions when appropriate to better understand their needs
+- Celebrate their financial wins and progress
+
+=== YOUR KNOWLEDGE ===
 ${financialContext}
 
-Provide helpful, conversational responses. If the question is about their finances, use the provided data. If it's a general question, answer it helpfully. Be concise but thorough. Use markdown formatting for better readability.`;
+=== YOUR GUIDELINES ===
+1. When discussing their finances, reference specific numbers from their data
+2. Offer personalized insights based on their spending patterns
+3. Suggest practical, actionable advice tailored to their situation
+4. If they ask general questions, answer helpfully but relate it back to their finances when relevant
+5. Be concise but thorough - don't ramble, but don't be too brief either
+6. Use markdown formatting (bold, lists, etc.) for better readability
+7. If their savings rate is low, gently suggest ways to improve it
+8. If they have high spending in a category, offer specific tips to reduce it
+9. Be honest about limitations - if you don't have enough data, say so
+10. End with a relevant question or suggestion to keep the conversation going
+
+=== EXAMPLE RESPONSE STYLE ===
+Instead of: "Your total expenses are $5000."
+Say: "I can see you've spent $5,000 this month! 🎯 Your biggest expense seems to be dining out. Would you like some tips on how to cut back on restaurant spending?"
+
+Instead of: "Your savings rate is 20%."
+Say: "Great news! You're saving 20% of your income - that's above the recommended 15-20%! 🎉 Keep up the excellent work. Have you thought about investing some of those savings?"
+
+Remember: You're not just answering questions - you're having a conversation and helping them improve their financial life.`;
 
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -958,7 +1045,7 @@ Provide helpful, conversational responses. If the question is about their financ
       {/* Chat Window */}
       {isOpen && (
         <div 
-          className="fixed bottom-6 right-6 z-50 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden"
+          className="fixed bottom-6 right-6 z-50 bg-slate-900 border-2 border-purple-500/50 rounded-2xl shadow-2xl"
           style={{ 
             width: `${chatSize.width}px`,
             height: `${chatSize.height}px`,
@@ -966,93 +1053,94 @@ Provide helpful, conversational responses. If the question is about their financ
             maxHeight: 'calc(100vh - 2rem)'
           }}
         >
-          {/* Resize Handles */}
-          <div 
-            className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize z-10 hover:bg-purple-500/30 transition-colors"
-            onMouseDown={(e) => handleResizeStart('se', e)}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-3 h-3 border-r-2 border-b-2 border-purple-400 rounded-br-lg" />
-            </div>
-          </div>
-          <div 
-            className="absolute bottom-0 left-0 w-6 h-6 cursor-sw-resize z-10 hover:bg-purple-500/30 transition-colors"
-            onMouseDown={(e) => handleResizeStart('sw', e)}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-3 h-3 border-l-2 border-b-2 border-purple-400 rounded-bl-lg" />
-            </div>
-          </div>
-          <div 
-            className="absolute top-0 right-0 w-6 h-6 cursor-ne-resize z-10 hover:bg-purple-500/30 transition-colors"
-            onMouseDown={(e) => handleResizeStart('ne', e)}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-3 h-3 border-r-2 border-t-2 border-purple-400 rounded-tr-lg" />
-            </div>
-          </div>
-          <div 
-            className="absolute top-0 left-0 w-10 h-10 cursor-nw-resize z-10 hover:bg-purple-500/40 transition-colors"
-            onMouseDown={(e) => handleResizeStart('nw', e)}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-5 h-5 border-l-4 border-t-4 border-purple-500 rounded-tl-lg" />
-            </div>
-          </div>
-          <div 
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-4 cursor-n-resize z-10 hover:bg-purple-500/30 transition-colors"
-            onMouseDown={(e) => handleResizeStart('n', e)}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-6 h-1 bg-purple-400 rounded-full" />
-            </div>
-          </div>
-          <div 
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-4 cursor-s-resize z-10 hover:bg-purple-500/30 transition-colors"
-            onMouseDown={(e) => handleResizeStart('s', e)}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-6 h-1 bg-purple-400 rounded-full" />
-            </div>
-          </div>
-          <div 
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-12 cursor-w-resize z-10 hover:bg-purple-500/30 transition-colors"
-            onMouseDown={(e) => handleResizeStart('w', e)}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-1 h-6 bg-purple-400 rounded-full" />
-            </div>
-          </div>
-          <div 
-            className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-12 cursor-e-resize z-10 hover:bg-purple-500/30 transition-colors"
-            onMouseDown={(e) => handleResizeStart('e', e)}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-1 h-6 bg-purple-400 rounded-full" />
-            </div>
-          </div>
           {/* Header */}
-          <div className="bg-gradient-to-r from-purple-500 to-cyan-500 p-4 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-purple-500 to-cyan-500 p-4 flex items-center justify-between relative z-50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Bot className="w-5 h-5 text-white" />
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <Bot className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-white font-semibold">ExpenseAI Assistant</h3>
-                <p className="text-white/80 text-xs">Always here to help</p>
+                <h3 className="text-white font-bold text-lg">ExpenseAI Assistant</h3>
+                <p className="text-white/90 text-xs font-medium">Always here to help</p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-white/80 hover:text-white transition-colors"
+              className="text-white hover:text-white/90 transition-colors p-3 hover:bg-white/10 rounded-xl bg-white/5 shadow-lg border border-white/20"
             >
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             </button>
+          </div>
+
+          {/* Resize Handles */}
+          <div 
+            className="absolute bottom-0 right-0 w-10 h-10 cursor-se-resize z-[100] hover:bg-purple-500/70 transition-colors"
+            onMouseDown={(e) => handleResizeStart('se', e)}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-5 h-5 border-r-3 border-b-3 border-white rounded-br-lg" />
+            </div>
+          </div>
+          <div 
+            className="absolute bottom-0 left-0 w-10 h-10 cursor-sw-resize z-[100] hover:bg-purple-500/70 transition-colors"
+            onMouseDown={(e) => handleResizeStart('sw', e)}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-5 h-5 border-l-3 border-b-3 border-white rounded-bl-lg" />
+            </div>
+          </div>
+          <div 
+            className="absolute top-0 right-0 w-10 h-10 cursor-ne-resize z-[100] hover:bg-purple-500/70 transition-colors"
+            onMouseDown={(e) => handleResizeStart('ne', e)}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-5 h-5 border-r-3 border-t-3 border-white rounded-tr-lg" />
+            </div>
+          </div>
+          <div 
+            className="absolute top-0 left-0 w-16 h-16 cursor-nw-resize z-[100] hover:bg-purple-500/70 transition-colors"
+            onMouseDown={(e) => handleResizeStart('nw', e)}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-8 h-8 border-l-4 border-t-4 border-white rounded-tl-lg" />
+            </div>
+          </div>
+          <div 
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-8 cursor-n-resize z-[100] hover:bg-purple-500/70 transition-colors"
+            onMouseDown={(e) => handleResizeStart('n', e)}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-10 h-1 bg-white rounded-full" />
+            </div>
+          </div>
+          <div 
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-8 cursor-s-resize z-[100] hover:bg-purple-500/70 transition-colors"
+            onMouseDown={(e) => handleResizeStart('s', e)}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-10 h-1 bg-white rounded-full" />
+            </div>
+          </div>
+          <div 
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-20 cursor-w-resize z-[100] hover:bg-purple-500/70 transition-colors"
+            onMouseDown={(e) => handleResizeStart('w', e)}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-1 h-10 bg-white rounded-full" />
+            </div>
+          </div>
+          <div 
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-20 cursor-e-resize z-[100] hover:bg-purple-500/70 transition-colors"
+            onMouseDown={(e) => handleResizeStart('e', e)}
+          >
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-1 h-10 bg-white rounded-full" />
+            </div>
           </div>
 
           {/* Messages */}
           <div 
-            className="overflow-y-auto p-4 space-y-4 bg-slate-900/50"
+            className="overflow-y-auto p-4 space-y-4 bg-slate-800"
             style={{ height: `${chatSize.height - 180}px` }}
           >
             {messages.map((message) => (
@@ -1065,7 +1153,7 @@ Provide helpful, conversational responses. If the question is about their financ
                     className={`rounded-2xl px-4 py-3 ${
                       message.sender === 'user'
                         ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                        : 'bg-white/10 text-white border border-white/20'
+                        : 'bg-slate-700 text-white border border-slate-600'
                     }`}
                   >
                     <div className="flex items-start gap-2">
@@ -1084,26 +1172,26 @@ Provide helpful, conversational responses. If the question is about their financ
                   
                   {/* Message actions */}
                   <div className={`flex items-center gap-2 mt-1 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <span className="text-xs text-slate-500">{formatTime(message.timestamp)}</span>
+                    <span className="text-xs text-slate-400">{formatTime(message.timestamp)}</span>
                     {message.sender === 'bot' && !message.isStreaming && (
                       <>
                         <button
                           onClick={() => handleCopyMessage(message.text)}
-                          className="text-slate-500 hover:text-teal-400 transition-colors"
+                          className="text-slate-400 hover:text-teal-400 transition-colors"
                           title="Copy message"
                         >
                           <Copy className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => handleFeedback(message.id, true)}
-                          className={`transition-colors ${message.helpful === true ? 'text-green-400' : 'text-slate-500 hover:text-green-400'}`}
+                          className={`transition-colors ${message.helpful === true ? 'text-green-400' : 'text-slate-400 hover:text-green-400'}`}
                           title="Helpful"
                         >
                           <ThumbsUp className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => handleFeedback(message.id, false)}
-                          className={`transition-colors ${message.helpful === false ? 'text-red-400' : 'text-slate-500 hover:text-red-400'}`}
+                          className={`transition-colors ${message.helpful === false ? 'text-red-400' : 'text-slate-400 hover:text-red-400'}`}
                           title="Not helpful"
                         >
                           <ThumbsDown className="w-3 h-3" />
@@ -1131,7 +1219,7 @@ Provide helpful, conversational responses. If the question is about their financ
             ))}
             {isTyping && (
               <div className="flex justify-start animate-fade-in">
-                <div className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3">
+                <div className="bg-slate-700 border border-slate-600 rounded-2xl px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Bot className="w-4 h-4 text-teal-400" />
                     <div className="flex gap-1">
@@ -1147,14 +1235,14 @@ Provide helpful, conversational responses. If the question is about their financ
           </div>
 
           {/* Input */}
-          <div className="p-4 bg-slate-900/50 border-t border-white/10">
+          <div className="p-4 bg-slate-700 border-t border-slate-600">
             <div className="flex gap-2 items-center">
               <button
                 onClick={isListening ? stopListening : startListening}
                 className={`p-3 rounded-xl transition-all ${
                   isListening 
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
-                    : 'bg-white/10 hover:bg-white/20 text-white'
+                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse ring-2 ring-red-300' 
+                    : 'bg-slate-600 hover:bg-slate-500 text-white'
                 }`}
                 title={isListening ? 'Stop listening' : 'Start voice input'}
               >
@@ -1166,41 +1254,94 @@ Provide helpful, conversational responses. If the question is about their financ
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={isListening ? 'Listening...' : 'Ask me anything...'}
-                className={`flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 ${isListening ? 'border-cyan-400' : ''}`}
+                className={`flex-1 bg-slate-600 border border-slate-500 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 ${isListening ? 'border-cyan-400 ring-2 ring-cyan-400/20' : ''}`}
               />
-              <button
-                onClick={toggleVoice}
-                className={`p-3 rounded-xl transition-all ${
-                  voiceEnabled 
-                    ? 'bg-white/10 hover:bg-white/20 text-white' 
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-400'
-                }`}
-                title={voiceEnabled ? 'Voice enabled' : 'Voice disabled'}
-              >
-                {voiceEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim()}
-                className="bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-all"
-              >
-                <Send className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowVoiceSelector(!showVoiceSelector)}
+                    className="p-3 rounded-xl bg-slate-600 hover:bg-slate-500 text-white transition-all"
+                    title="Select voice"
+                  >
+                    <Volume2 className="w-5 h-5" />
+                  </button>
+                  {showVoiceSelector && (
+                    <div className="absolute bottom-full right-0 mb-2 w-64 bg-slate-700 border border-slate-600 rounded-xl shadow-xl p-3 max-h-64 overflow-y-auto">
+                      <p className="text-xs text-slate-400 mb-2 font-medium">Select Voice</p>
+                      {availableVoices.length > 0 ? (
+                        availableVoices.map((voice, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleVoiceSelect(voice.name)}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-xs mb-1 transition-all ${
+                              selectedVoice === voice.name
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                            }`}
+                          >
+                            <div className="font-medium">{voice.name}</div>
+                            <div className="text-slate-400">{voice.lang}</div>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-400">No voices available</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={toggleVoice}
+                  className={`p-3 rounded-xl transition-all ${
+                    voiceEnabled 
+                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
+                      : 'bg-slate-600 hover:bg-slate-500 text-slate-400'
+                  }`}
+                  title={voiceEnabled ? 'AI Voice: ON' : 'AI Voice: OFF'}
+                >
+                  {voiceEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                </button>
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!inputValue.trim()}
+                  className="bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-all"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-xs text-slate-400">
-                Powered by AI • Your data stays local
-              </p>
-              {isListening && (
-                <p className="text-xs text-cyan-400 animate-pulse">
-                  🎙️ Listening...
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center gap-4">
+                <p className="text-xs text-slate-400">
+                  Powered by AI • Your data stays local
                 </p>
-              )}
-              {isSpeaking && (
-                <p className="text-xs text-purple-400 animate-pulse">
-                  🔊 Speaking...
-                </p>
-              )}
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-600 rounded-lg">
+                  <span className="text-xs text-slate-300">AI Voice:</span>
+                  <button
+                    onClick={toggleVoice}
+                    className={`text-xs font-semibold px-2 py-0.5 rounded transition-all ${
+                      voiceEnabled 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-slate-500 text-slate-400'
+                    }`}
+                  >
+                    {voiceEnabled ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {isListening && (
+                  <div className="flex items-center gap-2 text-cyan-400">
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-medium animate-pulse">Listening...</span>
+                  </div>
+                )}
+                {isSpeaking && (
+                  <div className="flex items-center gap-2 text-purple-400">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-medium animate-pulse">Speaking...</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
