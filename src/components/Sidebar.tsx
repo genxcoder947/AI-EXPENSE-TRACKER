@@ -133,11 +133,11 @@ export default function Sidebar({
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative ${
                 isActive
                   ? isDarkMode
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                    ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
+                    : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
                   : isDarkMode
                     ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
@@ -146,6 +146,9 @@ export default function Sidebar({
             >
               <Icon className="w-7 h-7 flex-shrink-0" />
               {!isCollapsed && <span className="font-medium text-base">{item.label}</span>}
+              {isActive && (
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-lg pointer-events-none" />
+              )}
             </button>
           );
         })}

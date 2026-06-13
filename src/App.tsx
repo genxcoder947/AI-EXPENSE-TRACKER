@@ -196,6 +196,9 @@ export default function App() {
     // Clear all localStorage data
     localStorage.clear();
     
+    // Clear all sessionStorage data
+    sessionStorage.clear();
+    
     // Register new account
     const session = await register(email, password);
     setUser(session.user);
@@ -326,9 +329,9 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-violet-500/15 to-fuchsia-500/15 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-blue-500/20 to-emerald-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-cyan-500/15 to-teal-500/15 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
       {/* Sidebar */}
@@ -354,7 +357,7 @@ export default function App() {
           <div className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500/80 to-purple-500/80 backdrop-blur-xl rounded-2xl flex items-center justify-center shadow-lg shadow-pink-500/20 border border-white/20">
+                <div className="w-12 h-12 bg-gradient-to-br from-teal-500/80 to-cyan-500/80 backdrop-blur-xl rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20 border border-white/20">
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -363,13 +366,13 @@ export default function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="px-4 py-2 bg-gradient-to-r from-pink-50/80 to-purple-50/80 dark:from-pink-900/30 dark:to-purple-900/30 backdrop-blur-xl text-pink-700 dark:text-pink-300 text-sm font-semibold rounded-xl border border-pink-200/50 dark:border-pink-700/50 shadow-sm">
+                <span className="px-4 py-2 bg-gradient-to-r from-teal-50/80 to-cyan-50/80 dark:from-teal-900/30 dark:to-cyan-900/30 backdrop-blur-xl text-teal-700 dark:text-teal-300 text-sm font-semibold rounded-xl border border-teal-200/50 dark:border-teal-700/50 shadow-sm">
                   {expenses.length} expenses
                 </span>
                 <button onClick={toggleTheme} className="p-3 rounded-xl bg-white/60 dark:bg-slate-700/60 backdrop-blur-xl border border-white/20 dark:border-slate-600/20 hover:bg-white/80 dark:hover:bg-slate-600/80 transition-all shadow-sm">
                   {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-yellow-600" />}
                 </button>
-                <button onClick={() => void handleLogout()} className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500/80 to-purple-500/80 backdrop-blur-xl text-white font-semibold hover:from-pink-600/80 hover:to-purple-600/80 transition-all shadow-lg shadow-pink-500/20 border border-white/20">
+                <button onClick={() => void handleLogout()} className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500/80 to-cyan-500/80 backdrop-blur-xl text-white font-semibold hover:from-teal-600/80 hover:to-cyan-600/80 transition-all shadow-lg shadow-teal-500/20 border border-white/20">
                   Logout
                 </button>
               </div>
@@ -403,7 +406,7 @@ export default function App() {
                       placeholder="Search expenses by description, category, or notes..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 text-base border border-white/20 dark:border-slate-600/20 rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500/50 transition-all shadow-sm"
+                      className="w-full pl-12 pr-4 py-3 text-base border border-white/20 dark:border-slate-600/20 rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500/50 transition-all shadow-sm"
                     />
                   </div>
                   

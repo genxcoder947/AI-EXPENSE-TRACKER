@@ -43,6 +43,44 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+def load_smtp_config() -> dict[str, Any]:
+    config_file = Path.home() / "Library" / "Application Support" / "ExpenseAI" / "smtp_config.json"
+    if not config_file.exists():
+        return {}
+
+    try:
+        with config_file.open("r", encoding="utf-8") as file:
+            config = json.load(file)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    return config if isinstance(config, dict) else {}
+
+
+def save_smtp_config(config: dict[str, Any]) -> None:
+    config_dir = Path.home() / "Library" / "Application Support" / "ExpenseAI"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_file = config_dir / "smtp_config.json"
+    with config_file.open("w", encoding="utf-8") as file:
+        json.dump(config, file)
+
+
+def get_email_config() -> dict[str, Any]:
+    smtp_config = load_smtp_config()
+    if smtp_config.get("email") and smtp_config.get("password"):
+        return {
+            "smtp_server": smtp_config.get("server", "smtp.gmail.com"),
+            "smtp_port": int(smtp_config.get("port", "587")),
+            "email": str(smtp_config["email"]).strip(),
+            "password": re.sub(r"\s+", "", str(smtp_config["password"])),
+            "use_tls": smtp_config.get("use_tls", True),
+            "use_ssl": smtp_config.get("use_ssl", False),
+            "from_name": "ExpenseAI",
+        }
+
+    return EMAIL_CONFIG
+
+
 def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
@@ -56,13 +94,14 @@ def normalize_reset_code(code: str) -> str:
 
 
 def send_otp_email(to_email: str, otp: str) -> bool:
-    if not EMAIL_CONFIG['email'] or not EMAIL_CONFIG['password']:
+    email_config = get_email_config()
+    if not email_config['email'] or not email_config['password']:
         return False
 
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = 'ExpenseAI password reset code'
-        msg['From'] = f"{EMAIL_CONFIG['from_name']} <{EMAIL_CONFIG['email']}>"
+        msg['From'] = f"{email_config['from_name']} <{email_config['email']}>"
         msg['To'] = to_email
 
         text_content = f"""ExpenseAI password reset
@@ -97,23 +136,23 @@ This code expires in {RESET_HOURS * 60} minutes. If you did not request this res
         msg.attach(MIMEText(text_content, 'plain'))
         msg.attach(MIMEText(html_content, 'html'))
 
-        if EMAIL_CONFIG['use_ssl']:
+        if email_config['use_ssl']:
             server = smtplib.SMTP_SSL(
-                EMAIL_CONFIG['smtp_server'],
-                EMAIL_CONFIG['smtp_port'],
+                email_config['smtp_server'],
+                email_config['smtp_port'],
                 timeout=SMTP_TIMEOUT_SECONDS,
             )
         else:
             server = smtplib.SMTP(
-                EMAIL_CONFIG['smtp_server'],
-                EMAIL_CONFIG['smtp_port'],
+                email_config['smtp_server'],
+                email_config['smtp_port'],
                 timeout=SMTP_TIMEOUT_SECONDS,
             )
 
         with server:
-            if EMAIL_CONFIG['use_tls'] and not EMAIL_CONFIG['use_ssl']:
+            if email_config['use_tls'] and not email_config['use_ssl']:
                 server.starttls()
-            server.login(EMAIL_CONFIG['email'], EMAIL_CONFIG['password'])
+            server.login(email_config['email'], email_config['password'])
             server.send_message(msg)
 
         return True
@@ -382,6 +421,10 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
             self.handle_reset_password()
             return
 
+        if self.command == "POST" and path == "/api/config/smtp":
+            self.handle_save_smtp_config()
+            return
+
         if path == "/api/expenses":
             if self.command == "GET":
                 self.handle_list_expenses()
@@ -453,7 +496,8 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
 
     def handle_forgot_password(self) -> None:
         email = self.clean_email(self.read_json())
-        email_enabled = bool(EMAIL_CONFIG['email'] and EMAIL_CONFIG['password'])
+        email_config = get_email_config()
+        email_enabled = bool(email_config['email'] and email_config['password'])
         response: dict[str, Any] = {
             "message": "If an account exists for this email, a password reset code has been sent to your email address.",
             "emailEnabled": email_enabled,
@@ -528,6 +572,19 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
             user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
 
         self.send_json({"user": user_payload(user), "token": session_token})
+
+    def handle_save_smtp_config(self) -> None:
+        data = self.read_json()
+        smtp_config = {
+            "server": str(data.get("server", "smtp.gmail.com")),
+            "port": str(data.get("port", "587")),
+            "email": str(data.get("email", "")),
+            "password": str(data.get("password", "")),
+            "use_tls": bool(data.get("use_tls", True)),
+            "use_ssl": bool(data.get("use_ssl", False)),
+        }
+        save_smtp_config(smtp_config)
+        self.send_json({"ok": True, "message": "SMTP configuration saved successfully"})
 
     def clean_credentials(self, data: dict[str, Any]) -> tuple[str, str]:
         email = self.clean_email(data)

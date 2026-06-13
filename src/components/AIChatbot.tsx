@@ -603,6 +603,7 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
   const [aiModel, setAiModel] = useState<'local' | 'groq'>(() => {
     return (localStorage.getItem('aiModel') as 'local' | 'groq') || 'local';
   });
+  const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesis | null>(null);
@@ -682,34 +683,155 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
     scrollToBottom();
   }, [messages, isOpen]);
 
+  // Update localAI context when expenses or income change
+  useEffect(() => {
+    if (localAIRef.current) {
+      localAIRef.current.updateContext(expenses || [], income || []);
+      console.log('Updated localAI context with', expenses?.length || 0, 'expenses and', income?.length || 0, 'income items');
+    }
+  }, [expenses, income]);
+
   // Initialize speech recognition
   useEffect(() => {
+    console.log('Initializing speech recognition...');
+    console.log('SpeechRecognition available:', 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+    
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
+        console.log('Creating SpeechRecognition instance...');
+        setSpeechRecognitionSupported(true);
         const recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
+        recognition.onstart = () => {
+          console.log('Speech recognition started');
+          setIsListening(true);
+        };
+
         recognition.onresult = (event: any) => {
+          console.log('Speech recognition result:', event);
           const transcript = Array.from(event.results)
             .map((result: any) => result[0].transcript)
             .join('');
+          console.log('Transcript:', transcript);
           setInputValue(transcript);
+          
+          // Check if this is a final result (user finished speaking)
+          const lastResult = event.results[event.results.length - 1];
+          console.log('Last result isFinal:', lastResult?.isFinal);
+          if (lastResult && lastResult.isFinal) {
+            console.log('Final result detected, auto-sending message');
+            // Auto-send the message when user finishes speaking
+            setTimeout(() => {
+              if (transcript.trim()) {
+                setInputValue(transcript);
+                setIsListening(false);
+                // Trigger send message
+                const userMessage: Message = {
+                  id: Date.now().toString(),
+                  text: transcript,
+                  sender: 'user',
+                  timestamp: new Date()
+                };
+                setMessages(prev => [...prev, userMessage]);
+                setInputValue('');
+                setIsTyping(true);
+                
+                // Get bot response
+                getBotResponse(transcript).then(responseData => {
+                  const botResponse: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: '',
+                    sender: 'bot',
+                    timestamp: new Date(),
+                    quickActions: responseData.quickActions,
+                    isStreaming: true
+                  };
+                  
+                  setMessages(prev => [...prev, botResponse]);
+                  setIsTyping(false);
+                  
+                  // Stream the response
+                  let currentIndex = 0;
+                  const streamText = () => {
+                    if (currentIndex < responseData.response.length) {
+                      const charsToAdd = Math.min(3, responseData.response.length - currentIndex);
+                      const newText = responseData.response.substring(0, currentIndex + charsToAdd);
+                      
+                      setMessages(prev => prev.map(msg => 
+                        msg.id === botResponse.id ? { ...msg, text: newText } : msg
+                      ));
+                      
+                      currentIndex += charsToAdd;
+                      setTimeout(streamText, 15 + Math.random() * 20);
+                    } else {
+                      setMessages(prev => prev.map(msg => 
+                        msg.id === botResponse.id ? { ...msg, isStreaming: false } : msg
+                      ));
+                      
+                      if (voiceEnabled) {
+                        speak(responseData.response);
+                      }
+                    }
+                  };
+                  
+                  streamText();
+                }).catch(error => {
+                  console.error('Error getting bot response:', error);
+                  setIsTyping(false);
+                  const errorMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: "I apologize, but I encountered an error. Please try again.",
+                    sender: 'bot',
+                    timestamp: new Date()
+                  };
+                  setMessages(prev => [...prev, errorMessage]);
+                });
+              }
+            }, 500);
+          }
         };
 
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
+          console.error('Error details:', event);
           setIsListening(false);
+          
+          // Show error message to user
+          const errorMessage: Message = {
+            id: Date.now().toString(),
+            text: `Voice recognition error: ${event.error}. Please try again or use text input.`,
+            sender: 'bot',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, errorMessage]);
         };
 
         recognition.onend = () => {
+          console.log('Speech recognition ended');
           setIsListening(false);
         };
 
         recognitionRef.current = recognition;
+        console.log('Speech recognition initialized successfully');
+      } else {
+        console.error('SpeechRecognition constructor not available');
+        setSpeechRecognitionSupported(false);
       }
+    } else {
+      console.error('SpeechRecognition API not supported in this browser');
+      setSpeechRecognitionSupported(false);
+      // Show message to user
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        text: "Voice recognition is not supported in your browser. Please use Chrome, Edge, or Safari for voice commands.",
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
 
     // Initialize speech synthesis
@@ -795,6 +917,11 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
   };
 
   const getBotResponse = async (userMessage: string): Promise<{ response: string; quickActions?: string[] }> => {
+    console.log('getBotResponse called with expenses:', expenses?.length, 'items');
+    console.log('getBotResponse called with income:', income?.length, 'items');
+    console.log('Expenses data:', expenses);
+    console.log('Income data:', income);
+    
     if (aiModel === 'groq') {
       const apiKey = localStorage.getItem('groqApiKey');
       if (!apiKey) {
@@ -1239,12 +1366,15 @@ Remember: You're not just answering questions - you're having a conversation and
             <div className="flex gap-2 items-center">
               <button
                 onClick={isListening ? stopListening : startListening}
+                disabled={!speechRecognitionSupported}
                 className={`p-3 rounded-xl transition-all ${
-                  isListening 
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse ring-2 ring-red-300' 
-                    : 'bg-slate-600 hover:bg-slate-500 text-white'
+                  !speechRecognitionSupported
+                    ? 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
+                    : isListening 
+                      ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse ring-2 ring-red-300' 
+                      : 'bg-slate-600 hover:bg-slate-500 text-white'
                 }`}
-                title={isListening ? 'Stop listening' : 'Start voice input'}
+                title={speechRecognitionSupported ? (isListening ? 'Stop listening' : 'Start voice input') : 'Voice recognition not supported in this browser'}
               >
                 {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </button>

@@ -83,8 +83,8 @@ def get_email_config() -> dict[str, Any]:
         return {
             'smtp_server': smtp_config.get('server', 'smtp.gmail.com'),
             'smtp_port': int(smtp_config.get('port', '587')),
-            'email': smtp_config['email'],
-            'password': smtp_config['password'],
+            'email': str(smtp_config['email']).strip(),
+            'password': re.sub(r"\s+", "", str(smtp_config['password'])),
             'use_tls': smtp_config.get('use_tls', True),
             'use_ssl': smtp_config.get('use_ssl', False),
             'from_name': 'ExpenseAI',
@@ -702,9 +702,8 @@ class ExpenseAIHandler(BaseHTTPRequestHandler):
 
     def handle_forgot_password(self) -> None:
         email = self.clean_email(self.read_json())
-        
-        # Check if email is configured
-        email_enabled = bool(EMAIL_CONFIG['email'] and EMAIL_CONFIG['password'])
+        email_config = get_email_config()
+        email_enabled = bool(email_config['email'] and email_config['password'])
         
         response: dict[str, Any] = {
             "message": "If an account exists for this email, a password reset OTP has been sent to your email address.",
