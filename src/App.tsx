@@ -9,9 +9,9 @@ import { InsightsPanel } from './components/InsightsPanel';
 import { SpendingChart } from './components/SpendingChart';
 import { StatsOverview } from './components/StatsOverview';
 import { generateInsights, calculateCategoryTotals } from './utils/aiEngine';
-import { getPreferredCurrency, setPreferredCurrency, sortExpensesByDate, convertAmount } from './utils/helpers';
+import { getPreferredCurrency, setPreferredCurrency, sortExpensesByDate, convertAmount, formatCurrency, formatDate } from './utils/helpers';
 import { CategoryPieChart } from './components/CategoryPieChart';
-import { Sparkles, Moon, Sun, RefreshCw, Search } from 'lucide-react';
+import { Sparkles, Moon, Sun, RefreshCw, Search, Receipt, Percent } from 'lucide-react';
 import Login from './components/auth/Login';
 import AIChatbot from './components/AIChatbot';
 import Sidebar from './components/Sidebar';
@@ -354,7 +354,7 @@ export default function App() {
       >
         {/* Header */}
         <header className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-3xl border-b border-white/20 dark:border-slate-700/20 sticky top-0 z-10 shadow-lg">
-          <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-teal-500/80 to-cyan-500/80 backdrop-blur-xl rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20 border border-white/20">
@@ -381,45 +381,43 @@ export default function App() {
         </header>
 
         {/* Main Content Area */}
-        <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
+        <main className="max-w-7xl mx-auto px-4 py-6 relative z-10">
           {currentView === 'dashboard' && (
             <>
               {/* Stats Overview */}
-              <div className="mb-8">
+              <div className="mb-5">
                 <StatsOverview expenses={displayExpenses} currency={currency} />
               </div>
 
               {/* Income Overview */}
-              <div className="mb-8">
+              <div className="mb-5">
                 <IncomeOverview income={displayIncome} currency={currency} />
               </div>
 
               {/* Main Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
                 {/* Left Column */}
-                <div className="lg:col-span-2 space-y-6">
-                  {/* Search Bar */}
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      placeholder="Search expenses by description, category, or notes..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 text-base border border-white/20 dark:border-slate-600/20 rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500/50 transition-all shadow-sm"
-                    />
-                  </div>
-                  
+                <div className="lg:col-span-2 space-y-5">
                   <ExpenseForm onAddExpense={handleAddExpense} currency={currency} />
                   <ExpenseList
                     expenses={filteredExpenses}
                     onDeleteExpense={handleDeleteExpense}
                     onUpdateExpense={handleUpdateExpense}
                   />
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <QuickSummary expenses={displayExpenses} income={displayIncome} currency={currency} />
+                    <BudgetProgressTracker expenses={displayExpenses} currency={currency} />
+                  </div>
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <MonthlyComparison expenses={displayExpenses} currency={currency} />
+                    <SavingsGoalProgress expenses={displayExpenses} income={displayIncome} currency={currency} />
+                  </div>
                 </div>
 
                 {/* Right Column */}
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <InsightsPanel insights={insights} onRefresh={handleRefreshInsights} isRefreshing={isRefreshingInsights} />
                   <SpendingChart categoryTotals={categoryTotals} />
                   <CategoryPieChart expenses={displayExpenses} />
@@ -494,9 +492,106 @@ export default function App() {
             <div className="space-y-6">
               <div className="mb-8">
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-2">Analytics</h2>
-                <p className="text-slate-500 dark:text-slate-400">Visualize your spending patterns</p>
+                <p className="text-slate-500 dark:text-slate-400">Detailed insights into your spending patterns</p>
               </div>
+              
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-teal-500 to-cyan-500 text-white rounded-xl p-6 shadow-lg">
+                  <p className="text-sm opacity-80 mb-1">Total Expenses</p>
+                  <p className="text-2xl font-bold">{formatCurrency(displayExpenses.reduce((sum, e) => sum + e.amount, 0), currency)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-xl p-6 shadow-lg">
+                  <p className="text-sm opacity-80 mb-1">Total Income</p>
+                  <p className="text-2xl font-bold">{formatCurrency(displayIncome.reduce((sum, i) => sum + i.amount, 0), currency)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-500 to-green-500 text-white rounded-xl p-6 shadow-lg">
+                  <p className="text-sm opacity-80 mb-1">Net Savings</p>
+                  <p className="text-2xl font-bold">{formatCurrency(displayIncome.reduce((sum, i) => sum + i.amount, 0) - displayExpenses.reduce((sum, e) => sum + e.amount, 0), currency)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-xl p-6 shadow-lg">
+                  <p className="text-sm opacity-80 mb-1">Transactions</p>
+                  <p className="text-2xl font-bold">{displayExpenses.length + displayIncome.length}</p>
+                </div>
+              </div>
+
               <ExpenseTimelineGraph expenses={displayExpenses} isDarkMode={darkMode} />
+              
+              {/* Daily Expense Breakdown */}
+              <div className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border rounded-xl shadow-sm`}>
+                <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-teal-500" />
+                    Daily Expense Breakdown
+                  </h3>
+                  <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'} mt-1`}>
+                    Detailed view of all expenses by date
+                  </p>
+                </div>
+                <div className="p-6 space-y-4 max-h-[600px] overflow-y-auto">
+                  {(() => {
+                    const expensesByDate: Record<string, typeof displayExpenses> = {};
+                    displayExpenses.forEach(expense => {
+                      const dateKey = formatDate(expense.date);
+                      if (!expensesByDate[dateKey]) {
+                        expensesByDate[dateKey] = [];
+                      }
+                      expensesByDate[dateKey].push(expense);
+                    });
+                    
+                    if (Object.keys(expensesByDate).length === 0) {
+                      return (
+                        <div className="text-center py-12">
+                          <Receipt className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                          <p className={darkMode ? 'text-slate-400' : 'text-slate-600'}>No expenses for this time period</p>
+                        </div>
+                      );
+                    }
+                    
+                    return Object.entries(expensesByDate).map(([date, dayExpenses]) => (
+                      <div key={date} className={`rounded-lg border ${darkMode ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-600">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-slate-800 dark:text-white">{date}</h4>
+                            <span className="text-sm font-bold text-teal-600 dark:text-teal-400">
+                              {formatCurrency(dayExpenses.reduce((sum, e) => sum + e.amount, 0))}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          {dayExpenses.map((expense) => (
+                            <div key={expense.id} className={`p-3 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-white'}`}>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <p className="font-medium text-slate-800 dark:text-white">{expense.description}</p>
+                                  <div className="flex items-center gap-3 mt-1 text-xs">
+                                    <span className={darkMode ? 'text-slate-400' : 'text-slate-500'}>{expense.category}</span>
+                                    {expense.tax && expense.tax > 0 && (
+                                      <span className={`flex items-center gap-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        <Percent className="w-3 h-3" />
+                                        Tax: {formatCurrency(expense.tax)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="font-semibold text-slate-800 dark:text-white">
+                                  {formatCurrency(expense.amount)}
+                                </span>
+                              </div>
+                              {expense.notes && (
+                                <div className={`mt-2 p-2 rounded text-xs ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                  <p className="whitespace-pre-wrap">{expense.notes}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SpendingChart categoryTotals={categoryTotals} />
                 <CategoryPieChart expenses={displayExpenses} />

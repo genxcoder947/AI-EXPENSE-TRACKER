@@ -37,47 +37,49 @@ export function QuickSummary({ expenses, income, currency }: QuickSummaryProps) 
 
   return (
     <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-0 shadow-lg">
-      <CardContent className="p-8">
-        <h3 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-          <Target className="w-6 h-6" />
+      <CardContent className="p-6">
+        <h3 className="text-xl font-semibold mb-5 flex items-center gap-2">
+          <Target className="w-5 h-5" />
           Quick Summary
         </h3>
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-white/10 rounded-lg p-5 backdrop-blur-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="min-w-0 bg-white/10 rounded-lg p-4 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-2">
-              <Wallet className="w-5 h-5" />
+              <Wallet className="w-4 h-4 shrink-0" />
               <span className="text-sm text-white/80">Total Income</span>
             </div>
-            <p className="text-2xl font-bold">{formatCurrency(totalIncome)}</p>
-          </div>
-          
-          <div className="bg-white/10 rounded-lg p-5 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <PiggyBank className="w-5 h-5" />
-              <span className="text-sm text-white/80">Net Savings</span>
-            </div>
-            <p className={`text-2xl font-bold ${netSavings >= 0 ? 'text-white' : 'text-red-200'}`}>
-              {formatCurrency(netSavings)}
+            <p className="text-[clamp(1rem,1.45vw,1.5rem)] leading-tight font-bold tabular-nums whitespace-nowrap overflow-hidden text-ellipsis">
+              {formatCurrency(totalIncome, currency)}
             </p>
           </div>
           
-          <div className="bg-white/10 rounded-lg p-5 backdrop-blur-sm">
+          <div className="min-w-0 bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <PiggyBank className="w-4 h-4 shrink-0" />
+              <span className="text-sm text-white/80">Net Savings</span>
+            </div>
+            <p className={`text-[clamp(1rem,1.45vw,1.5rem)] leading-tight font-bold tabular-nums whitespace-nowrap overflow-hidden text-ellipsis ${netSavings >= 0 ? 'text-white' : 'text-red-200'}`}>
+              {formatCurrency(netSavings, currency)}
+            </p>
+          </div>
+          
+          <div className="min-w-0 bg-white/10 rounded-lg p-4 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm text-white/80">Savings Rate</span>
             </div>
-            <p className="text-2xl font-bold">{savingsRate}%</p>
+            <p className="text-[clamp(1.25rem,1.8vw,1.75rem)] leading-tight font-bold tabular-nums">{savingsRate}%</p>
           </div>
           
-          <div className="bg-white/10 rounded-lg p-5 backdrop-blur-sm">
+          <div className="min-w-0 bg-white/10 rounded-lg p-4 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-2">
               {monthOverMonthChange > 0 ? (
-                <TrendingUp className="w-5 h-5" />
+                <TrendingUp className="w-4 h-4 shrink-0" />
               ) : (
-                <TrendingDown className="w-5 h-5" />
+                <TrendingDown className="w-4 h-4 shrink-0" />
               )}
               <span className="text-sm text-white/80">MoM Change</span>
             </div>
-            <p className={`text-2xl font-bold ${monthOverMonthChange > 0 ? 'text-red-200' : 'text-white'}`}>
+            <p className={`text-[clamp(1.25rem,1.8vw,1.75rem)] leading-tight font-bold tabular-nums ${monthOverMonthChange > 0 ? 'text-red-200' : 'text-white'}`}>
               {Math.abs(monthOverMonthChange).toFixed(0)}%
             </p>
           </div>

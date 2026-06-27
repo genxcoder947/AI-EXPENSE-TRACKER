@@ -57,50 +57,121 @@ async function preprocessImageForOcr(file: File): Promise<Blob | File> {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Advanced preprocessing pipeline for worst conditions
-    // Step 1: Initial enhancement
-    ctx.filter = 'grayscale(1) contrast(2.5) brightness(1.15) saturate(1.3)';
+    // Step 1: Initial enhancement with advanced filters
+    ctx.filter = 'grayscale(1) contrast(3.0) brightness(1.2) saturate(1.5)';
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     ctx.filter = 'none';
     bitmap.close();
 
-    // Step 2: Get image data for pixel-level processing
+    // Step 2: Get image data for advanced pixel processing
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
+    const width = canvas.width;
+    const height = canvas.height;
     
-    // Step 3: Adaptive thresholding and noise reduction
-    for (let i = 0; i < data.length; i += 4) {
-      const value = data[i];
-      
-      // Local adaptive thresholding simulation
-      // Make dark areas darker and light areas lighter
-      const threshold = 128;
-      const contrastEnhanced = value < threshold 
-        ? Math.max(0, value - 50) // Darken shadows
-        : Math.min(255, value + 40); // Brighten highlights
-      
-      // Apply to all RGB channels
-      data[i] = contrastEnhanced;
-      data[i + 1] = contrastEnhanced;
-      data[i + 2] = contrastEnhanced;
+    // Step 3: Advanced adaptive thresholding with local window
+    const windowSize = 15;
+    const halfWindow = Math.floor(windowSize / 2);
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const value = data[idx];
+        
+        // Calculate local threshold using surrounding pixels
+        let localSum = 0;
+        let localCount = 0;
+        
+        for (let wy = -halfWindow; wy <= halfWindow; wy++) {
+          for (let wx = -halfWindow; wx <= halfWindow; wx++) {
+            const ny = y + wy;
+            const nx = x + wx;
+            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+              const nIdx = (ny * width + nx) * 4;
+              localSum += data[nIdx];
+              localCount++;
+            }
+          }
+        }
+        
+        const localMean = localSum / localCount;
+        const threshold = localMean * 0.85;
+        
+        // Apply adaptive thresholding
+        const binarized = value < threshold ? Math.max(0, value - 70) : Math.min(255, value + 50);
+        
+        data[idx] = binarized;
+        data[idx + 1] = binarized;
+        data[idx + 2] = binarized;
+      }
     }
     
     ctx.putImageData(imageData, 0, 0);
 
-    // Step 4: Apply morphological operations (simulated via canvas)
-    // Sharpen the image to enhance text edges
-    ctx.filter = 'contrast(1.2) brightness(1.05)';
+    // Step 4: Apply morphological operations for noise reduction
+    // Dilate to connect text regions
+    const dilatedData = ctx.getImageData(0, 0, width, height);
+    const dilatedPixels = dilatedData.data;
+    
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        let maxVal = 0;
+        
+        // 3x3 dilation kernel
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+            maxVal = Math.max(maxVal, data[nIdx]);
+          }
+        }
+        
+        dilatedPixels[idx] = maxVal;
+        dilatedPixels[idx + 1] = maxVal;
+        dilatedPixels[idx + 2] = maxVal;
+      }
+    }
+    
+    ctx.putImageData(dilatedData, 0, 0);
+
+    // Step 5: Erosion to remove small noise
+    const erodedData = ctx.getImageData(0, 0, width, height);
+    const erodedPixels = erodedData.data;
+    
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        let minVal = 255;
+        
+        // 3x3 erosion kernel
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+            minVal = Math.min(minVal, dilatedPixels[nIdx]);
+          }
+        }
+        
+        erodedPixels[idx] = minVal;
+        erodedPixels[idx + 1] = minVal;
+        erodedPixels[idx + 2] = minVal;
+      }
+    }
+    
+    ctx.putImageData(erodedData, 0, 0);
+
+    // Step 6: Sharpening for text edge enhancement
+    ctx.filter = 'contrast(1.3) brightness(1.08) saturate(1.2)';
     ctx.drawImage(canvas, 0, 0);
     ctx.filter = 'none';
 
-    // Step 5: Final binarization for better OCR
-    const finalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    // Step 7: Final aggressive binarization for OCR
+    const finalImageData = ctx.getImageData(0, 0, width, height);
     const finalData = finalImageData.data;
     
     for (let i = 0; i < finalData.length; i += 4) {
       const value = finalData[i];
-      // Aggressive binarization - push towards black or white
-      const binarized = value < 140 ? Math.max(0, value - 60) : Math.min(255, value + 40);
+      // Strong binarization with slight bias toward black
+      const binarized = value < 135 ? Math.max(0, value - 80) : Math.min(255, value + 50);
       finalData[i] = binarized;
       finalData[i + 1] = binarized;
       finalData[i + 2] = binarized;
@@ -333,7 +404,7 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
           },
         });
         
-        // Advanced Tesseract configuration for receipt scanning
+        // Advanced Tesseract configuration for receipt scanning with column detection
         await worker.setParameters({
           // Page segmentation mode - AUTO for flexible layout detection
           tessedit_pageseg_mode: PSM.AUTO,
@@ -389,6 +460,58 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
           
           // Improve text recognition quality
           tessedit_ocr_engine_mode: '1',
+          
+          // Column detection improvements
+          textord_tabfind_find_verticals: '1',
+          textord_use_box_tabs: '1',
+          textord_tabfind_vertical_text: '1',
+          textord_tabfind_aligned_gap_fraction: '0.5',
+          
+          // Improve table/column structure detection
+          textord_tablefind_recognize_tables: '1',
+          
+          // Better handling of multi-column layouts
+          textord_debug_tabfind: '0',
+          
+          // Improve spacing detection
+          textord_debug_printable: '0',
+          
+          // Enable better text block detection
+          textord_debug_baselines: '0',
+          
+          // Improve word spacing
+          textord_words_default_min_x_gap: '2',
+          textord_words_default_max_x_gap: '10',
+          
+          // Better line spacing
+          textord_lines_default_max_y_gap: '2',
+          
+          // Improve character spacing
+          textord_words_min_gap: '2',
+          
+          // Enable better handling of overlapping text
+          textord_overlap_x: '0',
+          
+          // Improve text orientation detection
+          textord_min_linesize: '2.5',
+          
+          // Better handling of small characters
+          textord_min_blob_height: '5',
+          
+          // Improve text block detection
+          textord_debug_blocks: '0',
+          
+          // Enable better word formation
+          textord_fpt_kerning: '0',
+          
+          // Improve character recognition for receipts
+          textord_debug_make_prop_words: '0',
+          
+          // Better handling of numbers in text
+          textord_digits_only: '0',
+          
+          // Improve detection of price columns
+          textord_tabfind_vertical_gap_ratio: '0.5',
         });
 
         setProgressLabel('Preparing image…');
@@ -525,40 +648,119 @@ export function ReceiptScanPanel({ onScanComplete, currency }: ReceiptScanPanelP
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Step 1: Initial enhancement
-    ctx.filter = 'grayscale(1) contrast(2.5) brightness(1.15) saturate(1.3)';
+    // Step 1: Initial enhancement with advanced filters
+    ctx.filter = 'grayscale(1) contrast(3.0) brightness(1.2) saturate(1.5)';
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.filter = 'none';
 
     // Step 2: Pixel-level processing
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
+    const width = canvas.width;
+    const height = canvas.height;
     
-    // Step 3: Adaptive thresholding
-    for (let i = 0; i < data.length; i += 4) {
-      const value = data[i];
-      const threshold = 128;
-      const contrastEnhanced = value < threshold 
-        ? Math.max(0, value - 50)
-        : Math.min(255, value + 40);
-      data[i] = contrastEnhanced;
-      data[i + 1] = contrastEnhanced;
-      data[i + 2] = contrastEnhanced;
+    // Step 3: Advanced adaptive thresholding with local window
+    const windowSize = 15;
+    const halfWindow = Math.floor(windowSize / 2);
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const value = data[idx];
+        
+        // Calculate local threshold using surrounding pixels
+        let localSum = 0;
+        let localCount = 0;
+        
+        for (let wy = -halfWindow; wy <= halfWindow; wy++) {
+          for (let wx = -halfWindow; wx <= halfWindow; wx++) {
+            const ny = y + wy;
+            const nx = x + wx;
+            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+              const nIdx = (ny * width + nx) * 4;
+              localSum += data[nIdx];
+              localCount++;
+            }
+          }
+        }
+        
+        const localMean = localSum / localCount;
+        const threshold = localMean * 0.85;
+        
+        // Apply adaptive thresholding
+        const binarized = value < threshold ? Math.max(0, value - 70) : Math.min(255, value + 50);
+        
+        data[idx] = binarized;
+        data[idx + 1] = binarized;
+        data[idx + 2] = binarized;
+      }
     }
     ctx.putImageData(imageData, 0, 0);
 
-    // Step 4: Sharpening
-    ctx.filter = 'contrast(1.2) brightness(1.05)';
+    // Step 4: Apply morphological operations for noise reduction
+    // Dilate to connect text regions
+    const dilatedData = ctx.getImageData(0, 0, width, height);
+    const dilatedPixels = dilatedData.data;
+    
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        let maxVal = 0;
+        
+        // 3x3 dilation kernel
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+            maxVal = Math.max(maxVal, data[nIdx]);
+          }
+        }
+        
+        dilatedPixels[idx] = maxVal;
+        dilatedPixels[idx + 1] = maxVal;
+        dilatedPixels[idx + 2] = maxVal;
+      }
+    }
+    
+    ctx.putImageData(dilatedData, 0, 0);
+
+    // Step 5: Erosion to remove small noise
+    const erodedData = ctx.getImageData(0, 0, width, height);
+    const erodedPixels = erodedData.data;
+    
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        let minVal = 255;
+        
+        // 3x3 erosion kernel
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+            minVal = Math.min(minVal, dilatedPixels[nIdx]);
+          }
+        }
+        
+        erodedPixels[idx] = minVal;
+        erodedPixels[idx + 1] = minVal;
+        erodedPixels[idx + 2] = minVal;
+      }
+    }
+    
+    ctx.putImageData(erodedData, 0, 0);
+
+    // Step 6: Sharpening for text edge enhancement
+    ctx.filter = 'contrast(1.3) brightness(1.08) saturate(1.2)';
     ctx.drawImage(canvas, 0, 0);
     ctx.filter = 'none';
 
-    // Step 5: Final binarization
-    const finalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    // Step 7: Final aggressive binarization for OCR
+    const finalImageData = ctx.getImageData(0, 0, width, height);
     const finalData = finalImageData.data;
     
     for (let i = 0; i < finalData.length; i += 4) {
       const value = finalData[i];
-      const binarized = value < 140 ? Math.max(0, value - 60) : Math.min(255, value + 40);
+      // Strong binarization with slight bias toward black
+      const binarized = value < 135 ? Math.max(0, value - 80) : Math.min(255, value + 50);
       finalData[i] = binarized;
       finalData[i + 1] = binarized;
       finalData[i + 2] = binarized;

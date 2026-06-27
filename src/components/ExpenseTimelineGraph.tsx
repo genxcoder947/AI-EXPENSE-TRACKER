@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Expense } from '../types';
 import { formatCurrency, formatDate } from '../utils/helpers';
-import { Calendar, TrendingUp, TrendingDown, Search, X, Clock, Tag, DollarSign, Settings, Eye, EyeOff } from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown, Search, X, Clock, Tag, DollarSign, Settings, Eye, EyeOff, Receipt, Percent } from 'lucide-react';
 
 type TimelineView = 'today' | 'thisWeek' | 'thisMonth' | 'thisYear' | '24h' | '7d' | '30d' | '90d' | '1y' | 'all';
 
@@ -168,6 +168,19 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
   const textColor = isDarkMode ? 'text-slate-300' : 'text-slate-600';
   const subTextColor = isDarkMode ? 'text-slate-400' : 'text-slate-500';
 
+  // Group expenses by date for detailed view
+  const expensesByDate = useMemo(() => {
+    const grouped: Record<string, Expense[]> = {};
+    filteredExpenses.forEach(expense => {
+      const dateKey = formatDate(expense.date);
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(expense);
+    });
+    return grouped;
+  }, [filteredExpenses]);
+
   return (
     <div className={`${bgColor} border ${borderColor} rounded-xl shadow-sm`}>
       {/* Header */}
@@ -314,12 +327,12 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
                         : 'bg-slate-50 border-slate-200'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <p className={`font-semibold text-slate-800 dark:text-white mb-1`}>
+                        <p className={`font-semibold text-slate-800 dark:text-white mb-2`}>
                           {expense.description}
                         </p>
-                        <div className="flex items-center gap-3 text-xs">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
                           <span className={`flex items-center gap-1 ${subTextColor}`}>
                             <Tag className="w-3 h-3" />
                             {expense.category}
@@ -328,10 +341,16 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
                             <Clock className="w-3 h-3" />
                             {formatDate(expense.date)}
                           </span>
-                          <span className={`flex items-center gap-1 ${subTextColor}`}>
+                          <span className={`flex items-center gap-1 font-semibold text-slate-800 dark:text-white`}>
                             <DollarSign className="w-3 h-3" />
                             {formatCurrency(expense.amount)}
                           </span>
+                          {expense.tax && expense.tax > 0 && (
+                            <span className={`flex items-center gap-1 ${subTextColor}`}>
+                              <Percent className="w-3 h-3" />
+                              Tax: {formatCurrency(expense.tax)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -341,7 +360,10 @@ export default function ExpenseTimelineGraph({ expenses, isDarkMode }: ExpenseTi
                           ? 'bg-slate-800 text-slate-300' 
                           : 'bg-white text-slate-600'
                       }`}>
-                        <p className="whitespace-pre-wrap">{expense.notes}</p>
+                        <div className="flex items-start gap-2">
+                          <Receipt className="w-3 h-3 mt-0.5 shrink-0" />
+                          <p className="whitespace-pre-wrap">{expense.notes}</p>
+                        </div>
                       </div>
                     )}
                   </div>

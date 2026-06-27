@@ -3,7 +3,7 @@ import { Expense } from '../types';
 import { formatCurrency, formatDate } from '../utils/helpers';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { Check, NotebookText, Pencil, Sparkles, Trash2, X, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { Check, NotebookText, Pencil, Sparkles, Trash2, X, ChevronUp, ChevronDown, Eye, EyeOff, Search } from 'lucide-react';
 
 interface ExpenseListProps {
   expenses: Expense[];
@@ -50,6 +50,7 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
   const [actionError, setActionError] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isPartiallyHidden, setIsPartiallyHidden] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
@@ -119,6 +120,13 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
     }
   };
 
+  // Filter expenses based on search query
+  const filteredExpenses = expenses.filter(expense =>
+    expense.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    expense.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (expense.notes && expense.notes.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   if (expenses.length === 0) {
     return (
       <Card className="bg-white border border-slate-200 shadow-sm">
@@ -134,16 +142,29 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
   return (
     <Card className="bg-white border border-slate-200 shadow-sm">
       <CardHeader className="border-b border-slate-100 bg-slate-50">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-slate-800">Recent Expenses</CardTitle>
-          <button
-            onClick={() => setIsPartiallyHidden(!isPartiallyHidden)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all text-sm font-medium"
-            title={isPartiallyHidden ? "Show all details" : "Partially hide expenses"}
-          >
-            {isPartiallyHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            {isPartiallyHidden ? "Show All" : "Hide Details"}
-          </button>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-slate-800">Recent Expenses</CardTitle>
+            <button
+              onClick={() => setIsPartiallyHidden(!isPartiallyHidden)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all text-sm font-medium"
+              title={isPartiallyHidden ? "Show all details" : "Partially hide expenses"}
+            >
+              {isPartiallyHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              {isPartiallyHidden ? "Show All" : "Hide Details"}
+            </button>
+          </div>
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search expenses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500/50 transition-all"
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0 relative">
@@ -157,7 +178,14 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
           onScroll={handleScroll}
           className="max-h-[600px] overflow-y-auto divide-y divide-slate-100 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400"
         >
-          {expenses.map((expense) => {
+          {filteredExpenses.length === 0 && searchQuery ? (
+            <div className="p-12 text-center">
+              <div className="text-4xl mb-3">🔍</div>
+              <p className="text-slate-500 font-medium">No expenses found</p>
+              <p className="text-sm text-slate-400 mt-1">Try a different search term</p>
+            </div>
+          ) : (
+            filteredExpenses.map((expense) => {
             const isEditing = editingId === expense.id && draft;
 
             if (isEditing) {
@@ -291,7 +319,8 @@ export function ExpenseList({ expenses, onDeleteExpense, onUpdateExpense }: Expe
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
         
         {/* Scroll to top button */}

@@ -403,6 +403,9 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
   let pendingName: string | null = null;
   let pendingAmount: number | null = null;
 
+  // Analyze column structure from the receipt
+  const columnPositions = analyzeColumnStructure(lines);
+
   for (const line of lines) {
     // Skip tax lines
     if (TAX_LINE_HINTS.test(line)) {
@@ -412,6 +415,23 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
     }
 
     if (TOTAL_LINE_HINTS.test(line) || WEAK_TOTAL_HINTS.test(line) || shouldIgnoreMoneyLine(line)) {
+      pendingName = null;
+      pendingAmount = null;
+      continue;
+    }
+
+    // Try column-based extraction first (more accurate for structured receipts)
+    const columnItem = extractFromColumns(line, columnPositions);
+    if (columnItem) {
+      const quantityResult = extractQuantity(columnItem.name);
+      const name = cleanItemName(quantityResult.name);
+      if (isLikelyItemName(name) && (receiptTotal === null || Math.abs(columnItem.amount - receiptTotal) > 0.01)) {
+        items.push({
+          name,
+          amount: columnItem.amount,
+          ...(quantityResult.quantity ? { quantity: quantityResult.quantity } : {}),
+        });
+      }
       pendingName = null;
       pendingAmount = null;
       continue;
@@ -492,6 +512,65 @@ function extractLineItems(lines: string[], receiptTotal: number | null): Receipt
       return true;
     })
     .slice(0, 15);
+}
+
+// Analyze column structure from receipt lines
+function analyzeColumnStructure(lines: string[]): { nameEnd: number; amountStart: number; hasColumns: boolean } {
+  let nameEnd = 0;
+  let amountStart = Infinity;
+  let hasColumns = false;
+  let columnSamples = 0;
+
+  for (const line of lines) {
+    if (shouldIgnoreMoneyLine(line)) continue;
+    
+    const amounts = extractAmountsFromLine(line);
+    if (amounts.length === 0) continue;
+
+    // Find position of first amount
+    const amountMatch = line.match(/[0-9OoQDIl|SsBb,]+[.,][0-9OoQDIl|SsBb]{1,2}|[0-9OoQDIl|SsBb]{2,5}\/-/);
+    if (amountMatch) {
+      const amountPos = line.indexOf(amountMatch[0]);
+      if (amountPos > 0) {
+        // Check if there's text before the amount
+        const textBefore = line.substring(0, amountPos).trim();
+        if (textBefore.length > 2 && /[a-z]/i.test(textBefore)) {
+          nameEnd = Math.max(nameEnd, amountPos);
+          amountStart = Math.min(amountStart, amountPos);
+          columnSamples++;
+        }
+      }
+    }
+  }
+
+  hasColumns = columnSamples >= 3;
+  return { nameEnd, amountStart: hasColumns ? amountStart : Infinity, hasColumns };
+}
+
+// Extract item from column-based layout
+function extractFromColumns(line: string, columns: { nameEnd: number; amountStart: number; hasColumns: boolean }): { name: string; amount: number } | null {
+  if (!columns.hasColumns) return null;
+
+  const amounts = extractAmountsFromLine(line);
+  if (amounts.length === 0) return null;
+
+  const amount = amounts[0];
+  const amountMatch = line.match(/[0-9OoQDIl|SsBb,]+[.,][0-9OoQDIl|SsBb]{1,2}|[0-9OoQDIl|SsBb]{2,5}\/-/);
+  if (!amountMatch) return null;
+
+  const amountPos = line.indexOf(amountMatch[0]);
+  
+  // Extract name from before the amount
+  let name = line.substring(0, amountPos).trim();
+  
+  // Clean up the name
+  name = cleanItemLabel(name);
+  
+  if (name.length < 2) return null;
+  if (!/[a-z]/i.test(name)) return null;
+  if (NON_ITEM_LINE_HINTS.test(name)) return null;
+
+  return { name, amount };
 }
 
 function formatReceiptAmount(amount: number, currency: string = DEFAULT_CURRENCY): string {

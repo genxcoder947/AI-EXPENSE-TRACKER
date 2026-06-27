@@ -607,6 +607,12 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesis | null>(null);
+  const speechFinalTranscriptRef = useRef('');
+  const speechInterimTranscriptRef = useRef('');
+  const speechSendTimerRef = useRef<number | null>(null);
+  const speechErrorRef = useRef<string | null>(null);
+  const speechHasSubmittedRef = useRef(false);
+  const sendMessageTextRef = useRef<(text: string) => void>(() => {});
   const localAIRef = useRef(new LocalAI(expenses, income));
 
   const scrollToBottom = () => {
@@ -683,6 +689,47 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
     scrollToBottom();
   }, [messages, isOpen]);
 
+  const addBotNotice = (text: string) => {
+    const notice: Message = {
+      id: Date.now().toString(),
+      text,
+      sender: 'bot',
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, notice]);
+  };
+
+  const clearSpeechSendTimer = () => {
+    if (speechSendTimerRef.current !== null) {
+      window.clearTimeout(speechSendTimerRef.current);
+      speechSendTimerRef.current = null;
+    }
+  };
+
+  const getBestSpeechTranscript = () => {
+    return `${speechFinalTranscriptRef.current} ${speechInterimTranscriptRef.current}`
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const submitCapturedSpeech = (delay = 250) => {
+    clearSpeechSendTimer();
+    speechSendTimerRef.current = window.setTimeout(() => {
+      const transcript = getBestSpeechTranscript();
+
+      if (transcript && !speechHasSubmittedRef.current) {
+        speechHasSubmittedRef.current = true;
+        setInputValue('');
+        sendMessageTextRef.current(transcript);
+        return;
+      }
+
+      if (!transcript && !speechHasSubmittedRef.current && speechErrorRef.current !== 'aborted') {
+        addBotNotice("I didn't catch that clearly. Try speaking a little closer to the mic, or type your message.");
+      }
+    }, delay);
+  };
+
   // Update localAI context when expenses or income change
   useEffect(() => {
     if (localAIRef.current) {
@@ -704,115 +751,71 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
         const recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = true;
-        recognition.lang = 'en-US';
+        recognition.lang = localStorage.getItem('speechLanguage') || (navigator.language?.startsWith('en') ? navigator.language : 'en-IN');
 
         recognition.onstart = () => {
           console.log('Speech recognition started');
+          speechFinalTranscriptRef.current = '';
+          speechInterimTranscriptRef.current = '';
+          speechErrorRef.current = null;
+          speechHasSubmittedRef.current = false;
+          clearSpeechSendTimer();
           setIsListening(true);
         };
 
         recognition.onresult = (event: any) => {
           console.log('Speech recognition result:', event);
-          const transcript = Array.from(event.results)
-            .map((result: any) => result[0].transcript)
-            .join('');
+          let finalTranscript = '';
+          let interimTranscript = '';
+
+          for (let index = 0; index < event.results.length; index += 1) {
+            const result = event.results[index];
+            const phrase = result?.[0]?.transcript || '';
+            if (result.isFinal) {
+              finalTranscript += `${phrase} `;
+            } else {
+              interimTranscript += `${phrase} `;
+            }
+          }
+
+          speechFinalTranscriptRef.current = finalTranscript.trim();
+          speechInterimTranscriptRef.current = interimTranscript.trim();
+
+          const transcript = getBestSpeechTranscript();
           console.log('Transcript:', transcript);
           setInputValue(transcript);
-          
-          // Check if this is a final result (user finished speaking)
-          const lastResult = event.results[event.results.length - 1];
-          console.log('Last result isFinal:', lastResult?.isFinal);
-          if (lastResult && lastResult.isFinal) {
-            console.log('Final result detected, auto-sending message');
-            // Auto-send the message when user finishes speaking
-            setTimeout(() => {
-              if (transcript.trim()) {
-                setInputValue(transcript);
-                setIsListening(false);
-                // Trigger send message
-                const userMessage: Message = {
-                  id: Date.now().toString(),
-                  text: transcript,
-                  sender: 'user',
-                  timestamp: new Date()
-                };
-                setMessages(prev => [...prev, userMessage]);
-                setInputValue('');
-                setIsTyping(true);
-                
-                // Get bot response
-                getBotResponse(transcript).then(responseData => {
-                  const botResponse: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: '',
-                    sender: 'bot',
-                    timestamp: new Date(),
-                    quickActions: responseData.quickActions,
-                    isStreaming: true
-                  };
-                  
-                  setMessages(prev => [...prev, botResponse]);
-                  setIsTyping(false);
-                  
-                  // Stream the response
-                  let currentIndex = 0;
-                  const streamText = () => {
-                    if (currentIndex < responseData.response.length) {
-                      const charsToAdd = Math.min(3, responseData.response.length - currentIndex);
-                      const newText = responseData.response.substring(0, currentIndex + charsToAdd);
-                      
-                      setMessages(prev => prev.map(msg => 
-                        msg.id === botResponse.id ? { ...msg, text: newText } : msg
-                      ));
-                      
-                      currentIndex += charsToAdd;
-                      setTimeout(streamText, 15 + Math.random() * 20);
-                    } else {
-                      setMessages(prev => prev.map(msg => 
-                        msg.id === botResponse.id ? { ...msg, isStreaming: false } : msg
-                      ));
-                      
-                      if (voiceEnabled) {
-                        speak(responseData.response);
-                      }
-                    }
-                  };
-                  
-                  streamText();
-                }).catch(error => {
-                  console.error('Error getting bot response:', error);
-                  setIsTyping(false);
-                  const errorMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: "I apologize, but I encountered an error. Please try again.",
-                    sender: 'bot',
-                    timestamp: new Date()
-                  };
-                  setMessages(prev => [...prev, errorMessage]);
-                });
-              }
-            }, 500);
+
+          if (speechFinalTranscriptRef.current) {
+            submitCapturedSpeech(650);
           }
         };
 
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
           console.error('Error details:', event);
+          speechErrorRef.current = event.error;
           setIsListening(false);
-          
-          // Show error message to user
-          const errorMessage: Message = {
-            id: Date.now().toString(),
-            text: `Voice recognition error: ${event.error}. Please try again or use text input.`,
-            sender: 'bot',
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, errorMessage]);
+
+          if (getBestSpeechTranscript()) {
+            submitCapturedSpeech(250);
+            return;
+          }
+
+          if (event.error === 'aborted') return;
+
+          const message =
+            event.error === 'not-allowed'
+              ? 'Microphone permission is blocked. Allow microphone access for ExpenseAI, then try again.'
+              : event.error === 'audio-capture'
+                ? 'I could not access your microphone. Check your input device and try again.'
+                : "I didn't catch any speech. Tap the mic again and speak after it turns active.";
+          addBotNotice(message);
         };
 
         recognition.onend = () => {
           console.log('Speech recognition ended');
           setIsListening(false);
+          submitCapturedSpeech(speechFinalTranscriptRef.current ? 200 : 700);
         };
 
         recognitionRef.current = recognition;
@@ -855,6 +858,7 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
     }
 
     return () => {
+      clearSpeechSendTimer();
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
@@ -866,9 +870,20 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
 
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
+      clearSpeechSendTimer();
+      speechFinalTranscriptRef.current = '';
+      speechInterimTranscriptRef.current = '';
+      speechErrorRef.current = null;
+      speechHasSubmittedRef.current = false;
       setInputValue('');
-      recognitionRef.current.start();
-      setIsListening(true);
+      synthesisRef.current?.cancel();
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (error) {
+        console.error('Could not start speech recognition:', error);
+        addBotNotice('Voice input is already starting. Wait a second and try the mic again.');
+      }
     }
   };
 
@@ -876,13 +891,16 @@ export default function AIChatbot({ expenses = [], income = [] }: AIChatbotProps
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
+      submitCapturedSpeech(100);
     }
   };
 
-  const speak = (text: string) => {
+  const speak = (text: string, cancelPrevious = true) => {
     if (!voiceEnabled || !synthesisRef.current) return;
     
-    synthesisRef.current.cancel();
+    if (cancelPrevious) {
+      synthesisRef.current.cancel();
+    }
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1;
     utterance.pitch = 1;
@@ -1057,12 +1075,13 @@ Remember: You're not just answering questions - you're having a conversation and
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+  const sendMessageText = async (text: string) => {
+    const trimmedText = text.trim();
+    if (!trimmedText) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue,
+      text: trimmedText,
       sender: 'user',
       timestamp: new Date()
     };
@@ -1072,7 +1091,7 @@ Remember: You're not just answering questions - you're having a conversation and
     setIsTyping(true);
 
     try {
-      const responseData = await getBotResponse(inputValue);
+      const responseData = await getBotResponse(trimmedText);
       
       // Create a streaming bot message
       const botResponse: Message = {
@@ -1093,10 +1112,16 @@ Remember: You're not just answering questions - you're having a conversation and
         if (currentIndex < responseData.response.length) {
           const charsToAdd = Math.min(3, responseData.response.length - currentIndex);
           const newText = responseData.response.substring(0, currentIndex + charsToAdd);
+          const addedText = responseData.response.substring(currentIndex, currentIndex + charsToAdd);
           
           setMessages(prev => prev.map(msg => 
             msg.id === botResponse.id ? { ...msg, text: newText } : msg
           ));
+          
+          // Speak the new chunk as it's being displayed
+          if (voiceEnabled && addedText.trim()) {
+            speak(addedText, false);
+          }
           
           currentIndex += charsToAdd;
           setTimeout(streamText, 15 + Math.random() * 20); // Random delay for natural typing
@@ -1105,11 +1130,6 @@ Remember: You're not just answering questions - you're having a conversation and
           setMessages(prev => prev.map(msg => 
             msg.id === botResponse.id ? { ...msg, isStreaming: false } : msg
           ));
-          
-          // Speak the bot response
-          if (voiceEnabled) {
-            speak(responseData.response);
-          }
         }
       };
       
@@ -1127,9 +1147,19 @@ Remember: You're not just answering questions - you're having a conversation and
     }
   };
 
+  useEffect(() => {
+    sendMessageTextRef.current = (text: string) => {
+      void sendMessageText(text);
+    };
+  });
+
+  const handleSendMessage = async () => {
+    await sendMessageText(inputValue);
+  };
+
   const handleQuickAction = (action: string) => {
     setInputValue(action);
-    handleSendMessage();
+    void sendMessageText(action);
   };
 
   const handleCopyMessage = (text: string) => {
@@ -1383,7 +1413,7 @@ Remember: You're not just answering questions - you're having a conversation and
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={isListening ? 'Listening...' : 'Ask me anything...'}
+                placeholder={isListening ? 'Listening... speak naturally' : 'Ask me anything...'}
                 className={`flex-1 bg-slate-600 border border-slate-500 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 ${isListening ? 'border-cyan-400 ring-2 ring-cyan-400/20' : ''}`}
               />
               <div className="flex items-center gap-2">
@@ -1462,7 +1492,7 @@ Remember: You're not just answering questions - you're having a conversation and
                 {isListening && (
                   <div className="flex items-center gap-2 text-cyan-400">
                     <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-medium animate-pulse">Listening...</span>
+                    <span className="text-xs font-medium animate-pulse">Listening... pause to send</span>
                   </div>
                 )}
                 {isSpeaking && (

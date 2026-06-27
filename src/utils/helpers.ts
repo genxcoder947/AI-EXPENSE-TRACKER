@@ -109,12 +109,32 @@ export async function refreshCurrencyRates(): Promise<void> {
   cachedRates = await refreshExchangeRates();
 }
 
+export const parseDateOnly = (dateString: string): Date => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return new Date(`${dateString}T00:00:00`);
+  }
+
+  return new Date(dateString);
+};
+
 export const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-US', {
+  const date = parseDateOnly(dateString);
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
     month: 'short',
-    day: 'numeric'
+    year: 'numeric'
   }).format(date);
+};
+
+export const formatDateTime = (date: Date | string): string => {
+  const value = typeof date === 'string' ? new Date(date) : date;
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(value);
 };
 
 export const generateId = (): string => {
@@ -122,9 +142,13 @@ export const generateId = (): string => {
 };
 
 export const getTodayString = (): string => {
-  return new Date().toISOString().split('T')[0];
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export const sortExpensesByDate = (expenses: Expense[]): Expense[] => {
-  return [...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return [...expenses].sort((a, b) => parseDateOnly(b.date).getTime() - parseDateOnly(a.date).getTime());
 };

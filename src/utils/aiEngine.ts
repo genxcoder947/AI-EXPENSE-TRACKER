@@ -295,10 +295,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     // Income vs Expense Ratio
     const expenseRatio = totalIncome > 0 ? (totalSpent / totalIncome) * 100 : 0;
     const ratioMessages = [
-      `You're spending ${expenseRatio.toFixed(0)}% of your income. ${expenseRatio < 70 ? 'Great! You have room to save more.' : expenseRatio < 90 ? 'You have some savings potential.' : 'Consider reducing expenses to build savings.'}`,
-      `Expense-to-income ratio is ${expenseRatio.toFixed(0)}%. ${expenseRatio < 70 ? 'Excellent financial discipline!' : expenseRatio < 90 ? 'Room for improvement in spending habits.' : 'Time to review your budget.'}`,
-      `${expenseRatio.toFixed(0)}% of your income goes to expenses. ${expenseRatio < 70 ? 'You are saving well!' : expenseRatio < 90 ? 'Try to keep expenses under 90% of income.' : 'Focus on cutting non-essential costs.'}`,
-      `Your expenses consume ${expenseRatio.toFixed(0)}% of income. ${expenseRatio < 70 ? 'Healthy spending pattern!' : expenseRatio < 90 ? 'Monitor your spending closely.' : 'Urgent: Reduce expenses to avoid debt.'}`
+      `You're spending ${expenseRatio.toFixed(0)}% of your income. ${expenseRatio < 70 ? 'Great! You have room to save more. Consider investing the surplus in index funds or high-yield savings.' : expenseRatio < 90 ? 'You have some savings potential. Try the 50/30/20 rule: 50% needs, 30% wants, 20% savings.' : 'Consider reducing expenses to build savings. Focus on cutting discretionary spending first.'}`,
+      `Expense-to-income ratio is ${expenseRatio.toFixed(0)}%. ${expenseRatio < 70 ? 'Excellent financial discipline! You could accelerate your financial goals by increasing savings to 25%.' : expenseRatio < 90 ? 'Room for improvement in spending habits. Track every expense for a week to identify leaks.' : 'Time to review your budget. Consider the envelope method for better control.'}`,
+      `${expenseRatio.toFixed(0)}% of your income goes to expenses. ${expenseRatio < 70 ? 'You are saving well! Consider diversifying investments across stocks, bonds, and real estate.' : expenseRatio < 90 ? 'Try to keep expenses under 90% of income. Automate savings on payday to ensure you save first.' : 'Focus on cutting non-essential costs. Cancel unused subscriptions and negotiate recurring bills.'}`,
+      `Your expenses consume ${expenseRatio.toFixed(0)}% of income. ${expenseRatio < 70 ? 'Healthy spending pattern! Use this surplus to build an emergency fund or invest in your skills.' : expenseRatio < 90 ? 'Monitor your spending closely. Set daily spending limits to stay on track.' : 'Urgent: Reduce expenses to avoid debt. Consider a spending freeze for 30 days.'}`
     ];
     insights.push({
       type: expenseRatio < 70 ? 'tip' : expenseRatio < 90 ? 'info' : 'warning',
@@ -309,10 +309,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     // Net Cash Flow Analysis
     if (netCashFlow > 0) {
       const cashFlowMessages = [
-        `Positive cash flow! You're saving ${formatCurrency(netCashFlow)}. Consider investing this for growth.`,
-        `Great job! Your income exceeds expenses by ${formatCurrency(netCashFlow)}. This is your savings power.`,
-        `You're in the green with ${formatCurrency(netCashFlow)} surplus. Use this wisely for future goals.`,
-        `Net positive: ${formatCurrency(netCashFlow)}. This is the foundation of wealth building.`
+        `Positive cash flow! You're saving ${formatCurrency(netCashFlow)}. Consider investing this in a diversified portfolio for long-term growth.`,
+        `Great job! Your income exceeds expenses by ${formatCurrency(netCashFlow)}. This is your savings power. Use it to max out tax-advantaged accounts.`,
+        `You're in the green with ${formatCurrency(netCashFlow)} surplus. Use this wisely: 40% emergency fund, 40% investments, 20% goals.`,
+        `Net positive: ${formatCurrency(netCashFlow)}. This is the foundation of wealth building. Consider dollar-cost averaging into index funds.`
       ];
       insights.push({
         type: 'tip',
@@ -321,10 +321,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       });
     } else if (netCashFlow < 0) {
       const deficitMessages = [
-        `You're spending ${formatCurrency(Math.abs(netCashFlow))} more than you earn. Time to cut back.`,
-        `Negative cash flow of ${formatCurrency(Math.abs(netCashFlow))}. Review expenses urgently.`,
-        `You're in the red by ${formatCurrency(Math.abs(netCashFlow))}. Prioritize essential expenses only.`,
-        `Deficit alert: ${formatCurrency(Math.abs(netCashFlow))}. Create a budget to reverse this trend.`
+        `You're spending ${formatCurrency(Math.abs(netCashFlow))} more than you earn. Time to cut back. Start with the biggest expense categories.`,
+        `Negative cash flow of ${formatCurrency(Math.abs(netCashFlow))}. Review expenses urgently. Implement the 24-hour rule for purchases over $50.`,
+        `You're in the red by ${formatCurrency(Math.abs(netCashFlow))}. Prioritize essential expenses only. Consider a side hustle to bridge the gap.`,
+        `Deficit alert: ${formatCurrency(Math.abs(netCashFlow))}. Create a zero-based budget where every dollar has a purpose.`
       ];
       insights.push({
         type: 'warning',
@@ -336,10 +336,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     // Savings Rate Analysis
     if (savingsRate > 20) {
       const excellentSavingsMessages = [
-        `Excellent savings rate of ${savingsRate.toFixed(0)}%! You're building wealth effectively.`,
-        `Amazing! You save ${savingsRate.toFixed(0)}% of income. Keep up this habit for financial freedom.`,
-        `${savingsRate.toFixed(0)}% savings rate is outstanding. You're on track for early retirement goals.`,
-        `Top-tier saver at ${savingsRate.toFixed(0)}%. Consider accelerating investments with this rate.`
+        `Excellent savings rate of ${savingsRate.toFixed(0)}%! You're building wealth effectively. Consider tax optimization strategies to maximize returns.`,
+        `Amazing! You save ${savingsRate.toFixed(0)}% of income. Keep up this habit for financial freedom. Explore real estate or business investments.`,
+        `${savingsRate.toFixed(0)}% savings rate is outstanding. You're on track for early retirement goals. Consider increasing your investment risk tolerance.`,
+        `Top-tier saver at ${savingsRate.toFixed(0)}%. Consider accelerating investments with this rate. Look into tax-loss harvesting strategies.`
       ];
       insights.push({
         type: 'tip',
@@ -348,10 +348,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       });
     } else if (savingsRate > 10) {
       const goodSavingsMessages = [
-        `Good savings rate of ${savingsRate.toFixed(0)}%. Aim for 20%+ for faster wealth building.`,
-        `You save ${savingsRate.toFixed(0)}% of income. Solid foundation, room to grow.`,
-        `${savingsRate.toFixed(0)}% savings is decent. Small increases can compound significantly.`,
-        `Saving ${savingsRate.toFixed(0)}%? Try to boost it to 20% for optimal financial health.`
+        `Good savings rate of ${savingsRate.toFixed(0)}%. Aim for 20%+ for faster wealth building. Automate increases with raises.`,
+        `You save ${savingsRate.toFixed(0)}% of income. Solid foundation, room to grow. Try the 1% rule: increase savings by 1% every 3 months.`,
+        `${savingsRate.toFixed(0)}% savings is decent. Small increases can compound significantly. Consider employer 401(k) matching if available.`,
+        `Saving ${savingsRate.toFixed(0)}%? Try to boost it to 20% for optimal financial health. Use windfalls to boost savings rate.`
       ];
       insights.push({
         type: 'info',
@@ -360,10 +360,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       });
     } else if (savingsRate > 0) {
       const lowSavingsMessages = [
-        `Savings rate is only ${savingsRate.toFixed(0)}%. Try to increase to at least 10% for security.`,
-        `You save ${savingsRate.toFixed(0)}% of income. Consider automating savings to improve.`,
-        `${savingsRate.toFixed(0)}% savings rate is low. Every percentage point helps build your safety net.`,
-        `Saving ${savingsRate.toFixed(0)}%? Start small and gradually increase to build the habit.`
+        `Savings rate is only ${savingsRate.toFixed(0)}%. Try to increase to at least 10% for security. Start with 1% and build up.`,
+        `You save ${savingsRate.toFixed(0)}% of income. Consider automating savings to improve. Set up automatic transfers on payday.`,
+        `${savingsRate.toFixed(0)}% savings rate is low. Every percentage point helps build your safety net. Try the save-first-spend-later approach.`,
+        `Saving ${savingsRate.toFixed(0)}%? Start small and gradually increase to build the habit. Use apps that round up purchases for savings.`
       ];
       insights.push({
         type: 'warning',
@@ -381,10 +381,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     
     if (sourceEntries.length > 1) {
       const diversificationMessages = [
-        `Income diversification: ${sourceEntries.map(([s]) => s).join(', ')}. Multiple sources = financial security.`,
-        `You have ${sourceEntries.length} income streams: ${sourceEntries.map(([s]) => s).join(', ')}. Great for stability!`,
-        `Income from ${sourceEntries.length} sources: ${sourceEntries.map(([s]) => s).join(', ')}. Diversification reduces risk.`,
-        `${sourceEntries.length} income categories: ${sourceEntries.map(([s]) => s).join(', ')}. Keep diversifying for resilience.`
+        `Income diversification: ${sourceEntries.map(([s]) => s).join(', ')}. Multiple sources = financial security. Consider reinvesting side income.`,
+        `You have ${sourceEntries.length} income streams: ${sourceEntries.map(([s]) => s).join(', ')}. Great for stability! Build an emergency fund with 6 months of expenses.`,
+        `Income from ${sourceEntries.length} sources: ${sourceEntries.map(([s]) => s).join(', ')}. Diversification reduces risk. Consider tax implications of each source.`,
+        `${sourceEntries.length} income categories: ${sourceEntries.map(([s]) => s).join(', ')}. Keep diversifying for resilience. Look into passive income opportunities.`
       ];
       insights.push({
         type: 'tip',
@@ -393,10 +393,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       });
     } else if (sourceEntries.length === 1) {
       const singleSourceMessages = [
-        `Single income source detected. Consider adding side income for financial resilience.`,
-        `All income from one source. Diversifying could protect against job loss or income drops.`,
-        `One income stream? Explore freelance work, investments, or skills monetization for backup.`,
-        `Relying on one income source. Building multiple streams increases financial security.`
+        `Single income source detected. Consider adding side income for financial resilience. Freelancing, consulting, or online tutoring are options.`,
+        `All income from one source. Diversifying could protect against job loss or income drops. Start with a small side project.`,
+        `One income stream? Explore freelance work, investments, or skills monetization for backup. Even $100/month helps.`,
+        `Relying on one income source. Building multiple streams increases financial security. Consider dividend stocks or rental income.`
       ];
       insights.push({
         type: 'info',
@@ -414,10 +414,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       
       if (incomeGrowth > 10) {
         const growthMessages = [
-          `Income up by ${incomeGrowth.toFixed(0)}%! Your earning power is growing. Excellent momentum!`,
-          `Income growth of ${incomeGrowth.toFixed(0)}% detected. Keep building on this positive trend.`,
-          `Earnings increased ${incomeGrowth.toFixed(0)}%. Use this growth to accelerate savings goals.`,
-          `${incomeGrowth.toFixed(0)}% income growth! Great time to increase savings rate.`
+          `Income up by ${incomeGrowth.toFixed(0)}%! Your earning power is growing. Excellent momentum! Consider lifestyle inflation control.`,
+          `Income growth of ${incomeGrowth.toFixed(0)}% detected. Keep building on this positive trend. Invest the difference, don't spend it.`,
+          `Earnings increased ${incomeGrowth.toFixed(0)}%. Use this growth to accelerate savings goals. Maintain your current lifestyle.`,
+          `${incomeGrowth.toFixed(0)}% income growth! Great time to increase savings rate. Direct raises to savings before adjusting spending.`
         ];
         insights.push({
           type: 'tip',
@@ -426,10 +426,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
         });
       } else if (incomeGrowth < -10) {
         const declineMessages = [
-          `Income down ${Math.abs(incomeGrowth).toFixed(0)}%. Consider new income sources or skills development.`,
-          `Income declined by ${Math.abs(incomeGrowth).toFixed(0)}%. Time to explore earning opportunities.`,
-          `Earnings dropped ${Math.abs(incomeGrowth).toFixed(0)}%. Upskilling or side hustles could help recover.`,
-          `${Math.abs(incomeGrowth).toFixed(0)}% income decrease. Focus on stabilizing and growing income streams.`
+          `Income down ${Math.abs(incomeGrowth).toFixed(0)}%. Consider new income sources or skills development. Upskilling pays dividends.`,
+          `Income declined by ${Math.abs(incomeGrowth).toFixed(0)}%. Time to explore earning opportunities. Gig economy or consulting could help.`,
+          `Earnings dropped ${Math.abs(incomeGrowth).toFixed(0)}%. Upskilling or side hustles could help recover. Focus on high-demand skills.`,
+          `${Math.abs(incomeGrowth).toFixed(0)}% income decrease. Focus on stabilizing and growing income streams. Negotiate rates or seek promotions.`
         ];
         insights.push({
           type: 'warning',
@@ -445,10 +445,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     
     if (emergencyFundMonths >= 6) {
       const emergencyMessages = [
-        `Emergency fund covers ${emergencyFundMonths.toFixed(0)} months of expenses. Excellent financial security!`,
-        `You have ${emergencyFundMonths.toFixed(0)} months of expenses saved. Your emergency fund is fully funded.`,
-        `${emergencyFundMonths.toFixed(0)} months of emergency savings. You're well-protected against financial shocks.`,
-        `Emergency fund at ${emergencyFundMonths.toFixed(0)} months. Outstanding preparation for unexpected costs.`
+        `Emergency fund covers ${emergencyFundMonths.toFixed(0)} months of expenses. Excellent financial security! Consider investing excess beyond 6 months.`,
+        `You have ${emergencyFundMonths.toFixed(0)} months of expenses saved. Your emergency fund is fully funded. Focus on long-term investing now.`,
+        `${emergencyFundMonths.toFixed(0)} months of emergency savings. You're well-protected against financial shocks. Consider building wealth beyond emergency fund.`,
+        `Emergency fund at ${emergencyFundMonths.toFixed(0)} months. Outstanding preparation for unexpected costs. You can take calculated investment risks.`
       ];
       insights.push({
         type: 'tip',
@@ -457,10 +457,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       });
     } else if (emergencyFundMonths >= 3) {
       const partialMessages = [
-        `Emergency fund covers ${emergencyFundMonths.toFixed(0)} months. Aim for 6 months for full protection.`,
-        `${emergencyFundMonths.toFixed(0)} months of expenses saved. Good progress toward 6-month emergency fund.`,
-        `Partial emergency fund: ${emergencyFundMonths.toFixed(0)} months. Keep building to reach 6 months.`,
-        `You have ${emergencyFundMonths.toFixed(0)} months covered. 3 more months for complete security.`
+        `Emergency fund covers ${emergencyFundMonths.toFixed(0)} months. Aim for 6 months for full protection. Add windfalls to accelerate.`,
+        `${emergencyFundMonths.toFixed(0)} months of expenses saved. Good progress toward 6-month emergency fund. Keep going, you're almost there!`,
+        `Partial emergency fund: ${emergencyFundMonths.toFixed(0)} months. Keep building to reach 6 months. Automate monthly contributions.`,
+        `You have ${emergencyFundMonths.toFixed(0)} months covered. 3 more months for complete security. Consider high-yield savings for this fund.`
       ];
       insights.push({
         type: 'info',
@@ -469,10 +469,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       });
     } else if (emergencyFundMonths > 0) {
       const buildingMessages = [
-        `Emergency fund at ${emergencyFundMonths.toFixed(1)} months. Prioritize building this to 3-6 months.`,
-        `Only ${emergencyFundMonths.toFixed(1)} months covered. Start an emergency fund immediately.`,
-        `${emergencyFundMonths.toFixed(1)} months of emergency savings. Build this to 3 months minimum.`,
-        `Emergency fund needs work. ${emergencyFundMonths.toFixed(1)} months is not enough for security.`
+        `Emergency fund at ${emergencyFundMonths.toFixed(1)} months. Prioritize building this to 3-6 months. Make it non-negotiable in your budget.`,
+        `Only ${emergencyFundMonths.toFixed(1)} months covered. Start an emergency fund immediately. Even $100/month adds up.`,
+        `${emergencyFundMonths.toFixed(1)} months of emergency savings. Build this to 3 months minimum. Use a separate high-yield account.`,
+        `Emergency fund needs work. ${emergencyFundMonths.toFixed(1)} months is not enough for security. Set up automatic transfers.`
       ];
       insights.push({
         type: 'warning',
@@ -481,10 +481,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       });
     } else {
       const noFundMessages = [
-        `No emergency fund detected. Start saving 3-6 months of expenses for financial safety.`,
-        `Emergency fund is empty. This is your top priority for financial security.`,
-        `Zero emergency savings. Begin building a 3-month expense buffer immediately.`,
-        `Critical: No emergency fund. Save 3-6 months of expenses before other financial goals.`
+        `No emergency fund detected. Start saving 3-6 months of expenses for financial safety. Begin with $500/month.`,
+        `Emergency fund is empty. This is your top priority for financial security. Open a high-yield savings account today.`,
+        `Zero emergency savings. Begin building a 3-month expense buffer immediately. Start small, be consistent.`,
+        `Critical: No emergency fund. Save 3-6 months of expenses before other financial goals. This is your financial foundation.`
       ];
       insights.push({
         type: 'warning',
@@ -497,10 +497,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   // Predictive analytics - monthly projection with varied messages
   const monthlyProjection = dailyAverage * 30;
   const projectionMessages = [
-    `At your current pace of ${formatCurrency(dailyAverage)}/day, you'll likely spend ${formatCurrency(monthlyProjection)} this month.`,
-    `Based on recent spending, your monthly estimate is ${formatCurrency(monthlyProjection)}. Keep this in mind for budgeting.`,
-    `Your daily average is ${formatCurrency(dailyAverage)}, which projects to ${formatCurrency(monthlyProjection)} for the full month.`,
-    `If you continue spending like this, expect to spend ${formatCurrency(monthlyProjection)} by month's end.`
+    `At your current pace of ${formatCurrency(dailyAverage)}/day, you'll likely spend ${formatCurrency(monthlyProjection)} this month. Set a daily limit to stay on track.`,
+    `Based on recent spending, your monthly estimate is ${formatCurrency(monthlyProjection)}. Keep this in mind for budgeting. Adjust now if needed.`,
+    `Your daily average is ${formatCurrency(dailyAverage)}, which projects to ${formatCurrency(monthlyProjection)} for the full month. Consider a spending cap.`,
+    `If you continue spending like this, expect to spend ${formatCurrency(monthlyProjection)} by month's end. Review discretionary spending.`
   ];
   insights.push({
     type: 'info',
@@ -515,10 +515,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   
   if (topCategoryPercentage > 40) {
     const concentrationMessages = [
-      `${topCategory[0]} takes up ${topCategoryPercentage.toFixed(0)}% of your spending. Try spreading it across other categories.`,
-      `You're spending ${topCategoryPercentage.toFixed(0)}% on ${topCategory[0]}. Consider diversifying your expenses.`,
-      `Most of your money (${topCategoryPercentage.toFixed(0)}%) goes to ${topCategory[0]}. A balanced approach might help.`,
-      `${topCategory[0]} is your biggest expense at ${topCategoryPercentage.toFixed(0)}%. Maybe explore other spending areas?`
+      `${topCategory[0]} takes up ${topCategoryPercentage.toFixed(0)}% of your spending. Try spreading it across other categories. Diversification reduces risk.`,
+      `You're spending ${topCategoryPercentage.toFixed(0)}% on ${topCategory[0]}. Consider diversifying your expenses. A balanced approach improves financial health.`,
+      `Most of your money (${topCategoryPercentage.toFixed(0)}%) goes to ${topCategory[0]}. A balanced approach might help. Set category-specific budgets.`,
+      `${topCategory[0]} is your biggest expense at ${topCategoryPercentage.toFixed(0)}%. Maybe explore other spending areas? Consider the 50/30/20 rule for balance.`
     ];
     insights.push({
       type: 'warning',
@@ -538,10 +538,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     const highestAnomaly = highValueExpenses.sort((a, b) => b.amount - a.amount)[0];
     const anomalyPercentage = ((highestAnomaly.amount / categoryAverages[highestAnomaly.category]) * 100).toFixed(0);
     const anomalyMessages = [
-      `You spent ${formatCurrency(highestAnomaly.amount)} on ${highestAnomaly.description}, which is ${anomalyPercentage}% higher than usual for this category.`,
-      `That ${highestAnomaly.description} expense of ${formatCurrency(highestAnomaly.amount)} is ${anomalyPercentage}% above your typical ${highestAnomaly.category} spending.`,
-      `Unusual alert: ${formatCurrency(highestAnomaly.amount)} for ${highestAnomaly.description} is ${anomalyPercentage}% more than your average ${highestAnomaly.category} cost.`,
-      `Noticed a spike: ${highestAnomaly.description} cost ${formatCurrency(highestAnomaly.amount)}, ${anomalyPercentage}% higher than normal.`
+      `You spent ${formatCurrency(highestAnomaly.amount)} on ${highestAnomaly.description}, which is ${anomalyPercentage}% higher than usual for this category. Was this necessary?`,
+      `That ${highestAnomaly.description} expense of ${formatCurrency(highestAnomaly.amount)} is ${anomalyPercentage}% above your typical ${highestAnomaly.category} spending. Review if this was planned.`,
+      `Unusual alert: ${formatCurrency(highestAnomaly.amount)} for ${highestAnomaly.description} is ${anomalyPercentage}% more than your average ${highestAnomaly.category} cost. Track similar expenses.`,
+      `Noticed a spike: ${highestAnomaly.description} cost ${formatCurrency(highestAnomaly.amount)}, ${anomalyPercentage}% higher than normal. Consider if this is a recurring expense.`
     ];
     insights.push({
       type: 'warning',
@@ -569,10 +569,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     if (Math.abs(weekOverWeekChange) > 20) {
       const trend = weekOverWeekChange > 0 ? 'increased' : 'decreased';
       const trendMessages = [
-        `Spending ${trend} by ${Math.abs(weekOverWeekChange).toFixed(0)}% vs last week. ${weekOverWeekChange > 0 ? 'Time to review recent purchases.' : 'Nice work on cutting costs!'}`,
-        `Compared to last week, your spending ${trend} by ${Math.abs(weekOverWeekChange).toFixed(0)}%. ${weekOverWeekChange > 0 ? 'Maybe slow down a bit?' : 'Keep up the good habits!'}`,
-        `Week-over-week change: ${Math.abs(weekOverWeekChange).toFixed(0)}% ${trend}. ${weekOverWeekChange > 0 ? 'Check if these are necessary expenses.' : 'You are saving money effectively!'}`,
-        `Your spending went ${trend} by ${Math.abs(weekOverWeekChange).toFixed(0)}% this week. ${weekOverWeekChange > 0 ? 'Consider setting a limit.' : 'Great job managing your budget!'}`
+        `Spending ${trend} by ${Math.abs(weekOverWeekChange).toFixed(0)}% vs last week. ${weekOverWeekChange > 0 ? 'Time to review recent purchases. Implement the 24-hour rule for non-essentials.' : 'Nice work on cutting costs! Keep the momentum going.'}`,
+        `Compared to last week, your spending ${trend} by ${Math.abs(weekOverWeekChange).toFixed(0)}%. ${weekOverWeekChange > 0 ? 'Maybe slow down a bit? Set a weekly spending limit.' : 'You are saving money effectively! Consider investing the difference.'}`,
+        `Week-over-week change: ${Math.abs(weekOverWeekChange).toFixed(0)}% ${trend}. ${weekOverWeekChange > 0 ? 'Check if these are necessary expenses. Track every purchase this week.' : 'Great job managing your budget! Maintain these habits.'}`,
+        `Your spending went ${trend} by ${Math.abs(weekOverWeekChange).toFixed(0)}% this week. ${weekOverWeekChange > 0 ? 'Consider setting a limit. Use cash for discretionary spending.' : 'Excellent budget control! Reward yourself within reason.'}`
       ];
       insights.push({
         type: weekOverWeekChange > 0 ? 'warning' : 'tip',
@@ -585,10 +585,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   // Smart personalized recommendations based on spending patterns with varied messages
   if (categoryTotals['Food & Dining'] > totalSpent * 0.3) {
     const foodMessages = [
-      `Food & Dining is ${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}% of your spending. Cooking at home could save ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)}/month.`,
-      `You're spending ${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}% on food. Try meal prep to save around ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)} monthly.`,
-      `Food expenses are high at ${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}%. Home cooking might help you save ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)}.`,
-      `${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}% of your budget goes to food. Consider eating out less to save ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)}.`
+      `Food & Dining is ${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}% of your spending. Cooking at home could save ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)}/month. Try meal prep Sundays.`,
+      `You're spending ${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}% on food. Try meal prep to save around ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)} monthly. Batch cooking saves time and money.`,
+      `Food expenses are high at ${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}%. Home cooking might help you save ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)}. Set a weekly food budget.`,
+      `${((categoryTotals['Food & Dining'] / totalSpent) * 100).toFixed(0)}% of your budget goes to food. Consider eating out less to save ${formatCurrency(categoryTotals['Food & Dining'] * 0.3)}. Use grocery delivery apps with cashback.`
     ];
     insights.push({
       type: 'tip',
@@ -599,10 +599,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   
   if (categoryTotals['Entertainment'] > totalSpent * 0.15) {
     const entertainmentMessages = [
-      `Entertainment is taking up ${((categoryTotals['Entertainment'] / totalSpent) * 100).toFixed(0)}% of spending. Review subscriptions to save ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}.`,
-      `You spend ${((categoryTotals['Entertainment'] / totalSpent) * 100).toFixed(0)}% on entertainment. Cancel unused subscriptions to save ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}.`,
-      `Entertainment costs are ${((categoryTotals['Entertainment'] / totalSpent) * 100).toFixed(0)}% of total. Free alternatives could save you ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}.`,
-      `${((categoryTotals['Entertainment'] / totalSpent) * 100).toFixed(0)}% goes to entertainment. Check which subscriptions you actually use and save ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}.`
+      `Entertainment is taking up ${((categoryTotals['Entertainment'] / totalSpent) * 100).toFixed(0)}% of spending. Review subscriptions to save ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}. Use library resources.`,
+      `You spend ${((categoryTotals['Entertainment'] / totalSpent) * 100).toFixed(0)}% on entertainment. Cancel unused subscriptions to save ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}. Rotate streaming services monthly.`,
+      `Entertainment costs are ${((categoryTotals['Entertainment'] / totalSpent) * 100).toFixed(0)}% of total. Free alternatives could save you ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}. Look for community events.`,
+      `${((categoryTotals['Entertainment'] / totalSpent) * 100).toFixed(0)}% goes to entertainment. Check which subscriptions you actually use and save ${formatCurrency(categoryTotals['Entertainment'] * 0.2)}. Use student/senior discounts.`
     ];
     insights.push({
       type: 'tip',
@@ -646,10 +646,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   
   if (frequentCategories.length > 0) {
     const frequencyMessages = [
-      `Your top spending areas: ${frequentCategories.join(', ')}. These are your regular expenses to watch closely.`,
-      `You spend most often on: ${frequentCategories.join(', ')}. These categories deserve your attention for budgeting.`,
-      `Frequent spending in: ${frequentCategories.join(', ')}. Focus on optimizing these core expenses.`,
-      `Main expense categories: ${frequentCategories.join(', ')}. Track these carefully to stay on budget.`
+      `Your top spending areas: ${frequentCategories.join(', ')}. These are your regular expenses to watch closely. Set category-specific budgets for better control.`,
+      `You spend most often on: ${frequentCategories.join(', ')}. These categories deserve your attention for budgeting. Track these weekly to stay on target.`,
+      `Frequent spending in: ${frequentCategories.join(', ')}. Focus on optimizing these core expenses. Look for recurring costs that can be reduced.`,
+      `Main expense categories: ${frequentCategories.join(', ')}. Track these carefully to stay on budget. Consider if any can be consolidated or eliminated.`
     ];
     insights.push({
       type: 'info',
@@ -671,10 +671,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     
     if (maxDay) {
       const dayPatternMessages = [
-        `You spend most on ${dayNames[parseInt(maxDay[0])]}. Plan your budget around this pattern.`,
-        `${dayNames[parseInt(maxDay[0])]} is your biggest spending day. Consider setting weekly limits.`,
-        `Peak spending day: ${dayNames[parseInt(maxDay[0])]}. Be extra mindful on this day.`,
-        `Most expenses hit on ${dayNames[parseInt(maxDay[0])]}. Set a reminder to check spending then.`
+        `You spend most on ${dayNames[parseInt(maxDay[0])]}. Plan your budget around this pattern. Set a lower spending limit for this day.`,
+        `${dayNames[parseInt(maxDay[0])]} is your biggest spending day. Consider setting weekly limits. Delay non-essential purchases to other days.`,
+        `Peak spending day: ${dayNames[parseInt(maxDay[0])]}. Be extra mindful on this day. Review your spending before making purchases.`,
+        `Most expenses hit on ${dayNames[parseInt(maxDay[0])]}. Set a reminder to check spending then. Plan your week to avoid impulse buys.`
       ];
       insights.push({
         type: 'info',
@@ -700,10 +700,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
       
       if (highestMonth[1] > lowestMonth[1] * 1.5) {
         const seasonalMessages = [
-          `Spending varies significantly by month. ${highestMonth[0]} is your highest (${formatCurrency(highestMonth[1])}).`,
-          `Seasonal pattern detected: ${highestMonth[0]} costs ${formatCurrency(highestMonth[1])} vs ${lowestMonth[0]} at ${formatCurrency(lowestMonth[1])}.`,
-          `Monthly spending fluctuates. ${highestMonth[0]} peaks at ${formatCurrency(highestMonth[1])}. Plan accordingly.`,
-          `${highestMonth[0]} is your most expensive month (${formatCurrency(highestMonth[1])}). Budget extra for this period.`
+          `Spending varies significantly by month. ${highestMonth[0]} is your highest (${formatCurrency(highestMonth[1])}). Build a buffer for expensive months.`,
+          `Seasonal pattern detected: ${highestMonth[0]} costs ${formatCurrency(highestMonth[1])} vs ${lowestMonth[0]} at ${formatCurrency(lowestMonth[1])}. Save during low-spend months.`,
+          `Monthly spending fluctuates. ${highestMonth[0]} peaks at ${formatCurrency(highestMonth[1])}. Plan accordingly. Set aside extra funds during low-spend periods.`,
+          `${highestMonth[0]} is your most expensive month (${formatCurrency(highestMonth[1])}). Budget extra for this period. Use a sinking fund for predictable annual expenses.`
         ];
         insights.push({
           type: 'info',
@@ -731,10 +731,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     if (currentMilestone && nextMilestone) {
       const progress = ((netCashFlow - currentMilestone.target) / (nextMilestone.target - currentMilestone.target)) * 100;
       const milestoneMessages = [
-        `You've reached ${currentMilestone.name}! ${progress.toFixed(0)}% to ${nextMilestone.name}. Keep going!`,
-        `Milestone unlocked: ${currentMilestone.name}. ${progress.toFixed(0)}% progress toward ${nextMilestone.name}.`,
-        `${currentMilestone.icon} ${currentMilestone.name} achieved! ${progress.toFixed(0)}% to next goal: ${nextMilestone.name}.`,
-        `Great progress! ${currentMilestone.name} done. ${progress.toFixed(0)}% closer to ${nextMilestone.name}.`
+        `You've reached ${currentMilestone.name}! ${progress.toFixed(0)}% to ${nextMilestone.name}. Keep going! Automate savings to reach it faster.`,
+        `Milestone unlocked: ${currentMilestone.name}. ${progress.toFixed(0)}% progress toward ${nextMilestone.name}. Use windfalls to accelerate.`,
+        `${currentMilestone.icon} ${currentMilestone.name} achieved! ${progress.toFixed(0)}% to next goal: ${nextMilestone.name}. Consider increasing your savings rate.`,
+        `Great progress! ${currentMilestone.name} done. ${progress.toFixed(0)}% closer to ${nextMilestone.name}. Stay consistent and celebrate small wins.`
       ];
       insights.push({
         type: 'tip',
@@ -744,10 +744,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     } else if (nextMilestone) {
       const progress = (netCashFlow / nextMilestone.target) * 100;
       const goalMessages = [
-        `Working toward ${nextMilestone.name}. ${progress.toFixed(0)}% complete. Keep saving!`,
-        `${progress.toFixed(0)}% to ${nextMilestone.name}. Every bit counts toward your goal.`,
-        `Goal: ${nextMilestone.name}. You're ${progress.toFixed(0)}% there. Stay consistent!`,
-        `${nextMilestone.icon} Target: ${nextMilestone.name}. ${progress.toFixed(0)}% achieved so far.`
+        `Working toward ${nextMilestone.name}. ${progress.toFixed(0)}% complete. Keep saving! Set up automatic transfers to stay on track.`,
+        `${progress.toFixed(0)}% to ${nextMilestone.name}. Every bit counts toward your goal. Use the 1% rule to increase savings gradually.`,
+        `Goal: ${nextMilestone.name}. You're ${progress.toFixed(0)}% there. Stay consistent! Track your progress weekly for motivation.`,
+        `${nextMilestone.icon} Target: ${nextMilestone.name}. ${progress.toFixed(0)}% achieved so far. Consider side income to accelerate progress.`
       ];
       insights.push({
         type: 'info',
@@ -768,10 +768,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   const topBudgetItem = Object.entries(budgetBreakdown).sort((a, b) => b[1] - a[1])[0];
   if (topBudgetItem) {
     const budgetMessages = [
-      `AI Budget Tip: Allocate ${formatCurrency(topBudgetItem[1])}/month for ${topBudgetItem[0]} based on your patterns.`,
-      `Smart budget: ${formatCurrency(topBudgetItem[1])} for ${topBudgetItem[0]} this month. Track this category closely.`,
-      `Budget recommendation: ${formatCurrency(topBudgetItem[1])} for ${topBudgetItem[0]}. Your biggest spending area.`,
-      `AI suggests ${formatCurrency(topBudgetItem[1])} monthly budget for ${topBudgetItem[0]}. Adjust as needed.`
+      `AI Budget Tip: Allocate ${formatCurrency(topBudgetItem[1])}/month for ${topBudgetItem[0]} based on your patterns. Set alerts for this category.`,
+      `Smart budget: ${formatCurrency(topBudgetItem[1])} for ${topBudgetItem[0]} this month. Track this category closely. Review weekly.`,
+      `Budget recommendation: ${formatCurrency(topBudgetItem[1])} for ${topBudgetItem[0]}. Your biggest spending area. Consider if this aligns with priorities.`,
+      `AI suggests ${formatCurrency(topBudgetItem[1])} monthly budget for ${topBudgetItem[0]}. Adjust as needed. Use zero-based budgeting for precision.`
     ];
     insights.push({
       type: 'tip',
@@ -783,10 +783,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   // Investment Readiness Check
   if (savingsRate > 20 && emergencyFundMonths >= 3) {
     const investmentMessages = [
-      `You're ready to invest! ${savingsRate.toFixed(0)}% savings + emergency fund = investment opportunity.`,
-      `Investment ready! High savings rate (${savingsRate.toFixed(0)}%) + emergency fund = start investing.`,
-      `Time to invest: Your savings rate (${savingsRate.toFixed(0)}%) and emergency fund are solid.`,
-      `Investment opportunity! ${savingsRate.toFixed(0)}% savings rate with emergency fund coverage.`
+      `You're ready to invest! ${savingsRate.toFixed(0)}% savings + emergency fund = investment opportunity. Start with index funds for diversification.`,
+      `Investment ready! High savings rate (${savingsRate.toFixed(0)}%) + emergency fund = start investing. Consider tax-advantaged accounts first.`,
+      `Time to invest: Your savings rate (${savingsRate.toFixed(0)}%) and emergency fund are solid. Dollar-cost average into low-cost index funds.`,
+      `Investment opportunity! ${savingsRate.toFixed(0)}% savings rate with emergency fund coverage. Max out employer match before individual investing.`
     ];
     insights.push({
       type: 'tip',
@@ -795,10 +795,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     });
   } else if (savingsRate > 10 && emergencyFundMonths >= 3) {
     const almostReadyMessages = [
-      `Almost investment-ready. Boost savings to 20%+ for optimal investing position.`,
-      `Close to investing! Increase savings rate to 20% for better investment readiness.`,
-      `Investment potential: Raise savings to 20% while maintaining emergency fund.`,
-      `Nearly ready to invest. Focus on increasing savings rate to 20%.`
+      `Almost investment-ready. Boost savings to 20%+ for optimal investing position. Automate the increase with each raise.`,
+      `Close to investing! Increase savings rate to 20% for better investment readiness. Use the 1% rule to get there gradually.`,
+      `Investment potential: Raise savings to 20% while maintaining emergency fund. Consider side income to accelerate.`,
+      `Nearly ready to invest. Focus on increasing savings rate to 20%. Every percentage point helps build wealth faster.`
     ];
     insights.push({
       type: 'info',
@@ -815,10 +815,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     
     if (recentAverage > overallAverage * 1.5) {
       const velocityMessages = [
-        `Recent spending spike detected! Average expense increased significantly. Check recent purchases.`,
-        `Spending velocity up! Recent expenses are ${((recentAverage / overallAverage) * 100).toFixed(0)}% of average.`,
-        `Alert: Recent spending is higher than usual. Review your last 5 transactions.`,
-        `Spending acceleration detected. Recent purchases are above your typical amounts.`
+        `Recent spending spike detected! Average expense increased significantly. Check recent purchases. Implement a 24-hour cooling-off period.`,
+        `Spending velocity up! Recent expenses are ${((recentAverage / overallAverage) * 100).toFixed(0)}% of average. Pause and review before buying.`,
+        `Alert: Recent spending is higher than usual. Review your last 5 transactions. Set a daily spending limit for this week.`,
+        `Spending acceleration detected. Recent purchases are above your typical amounts. Track every expense for the next week.`
       ];
       insights.push({
         type: 'warning',
@@ -840,10 +840,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     
     if (ytdEarned > 0) {
       const ytdMessages = [
-        `Year-to-date: Earned ${formatCurrency(ytdEarned)}, spent ${formatCurrency(ytdSpent)}. Net: ${formatCurrency(ytdNet)}.`,
-        `YTD summary: ${formatCurrency(ytdSpent)} expenses vs ${formatCurrency(ytdEarned)} income. Net: ${formatCurrency(ytdNet)}.`,
-        `This year: ${formatCurrency(ytdEarned)} in, ${formatCurrency(ytdSpent)} out. Net position: ${formatCurrency(ytdNet)}.`,
-        `YTD performance: ${formatCurrency(ytdNet)} net from ${formatCurrency(ytdEarned)} income. ${ytdNet > 0 ? 'Positive!' : 'Review needed.'}`
+        `Year-to-date: Earned ${formatCurrency(ytdEarned)}, spent ${formatCurrency(ytdSpent)}. Net: ${formatCurrency(ytdNet)}. ${ytdNet > 0 ? 'Great progress! Keep saving.' : 'Focus on reducing expenses.'}`,
+        `YTD summary: ${formatCurrency(ytdSpent)} expenses vs ${formatCurrency(ytdEarned)} income. Net: ${formatCurrency(ytdNet)}. ${ytdNet > 0 ? 'Positive momentum!' : 'Room for improvement.'}`,
+        `This year: ${formatCurrency(ytdEarned)} in, ${formatCurrency(ytdSpent)} out. Net position: ${formatCurrency(ytdNet)}. ${ytdNet > 0 ? 'Build on this success!' : 'Adjust spending habits.'}`,
+        `YTD performance: ${formatCurrency(ytdNet)} net from ${formatCurrency(ytdEarned)} income. ${ytdNet > 0 ? 'On track for goals!' : 'Review and optimize budget.'}`
       ];
       insights.push({
         type: ytdNet > 0 ? 'tip' : 'info',
@@ -856,10 +856,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   // Smart Recommendations Based on Shopping Patterns
   if (categoryTotals['Shopping'] > totalSpent * 0.2) {
     const shoppingMessages = [
-      `Shopping is ${((categoryTotals['Shopping'] / totalSpent) * 100).toFixed(0)}% of spending. Try the 30-day rule before purchases.`,
-      `High shopping spend at ${((categoryTotals['Shopping'] / totalSpent) * 100).toFixed(0)}%. Wait 30 days before buying non-essentials.`,
-      `${((categoryTotals['Shopping'] / totalSpent) * 100).toFixed(0)}% on shopping. Use wish lists to curb impulse buys.`,
-      `Shopping alert: ${((categoryTotals['Shopping'] / totalSpent) * 100).toFixed(0)}% of budget. Consider needs vs wants.`
+      `Shopping is ${((categoryTotals['Shopping'] / totalSpent) * 100).toFixed(0)}% of spending. Try the 30-day rule before purchases. Unsubscribe from marketing emails.`,
+      `High shopping spend at ${((categoryTotals['Shopping'] / totalSpent) * 100).toFixed(0)}%. Wait 30 days before buying non-essentials. Use browser extensions to block ads.`,
+      `${((categoryTotals['Shopping'] / totalSpent) * 100).toFixed(0)}% on shopping. Use wish lists to curb impulse buys. Compare prices across retailers.`,
+      `Shopping alert: ${((categoryTotals['Shopping'] / totalSpent) * 100).toFixed(0)}% of budget. Consider needs vs wants. Use cash for discretionary purchases.`
     ];
     insights.push({
       type: 'tip',
@@ -872,10 +872,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   if (expenses.length >= 7) {
     const weeklyAverage = totalSpent / (daysSpan / 7);
     const weeklyMessages = [
-      `Weekly spending average: ${formatCurrency(weeklyAverage)}. Use this for weekly budget planning.`,
-      `Your weekly average is ${formatCurrency(weeklyAverage)}. Set weekly spending limits based on this.`,
-      `Average weekly spend: ${formatCurrency(weeklyAverage)}. Track against this each week.`,
-      `Weekly baseline: ${formatCurrency(weeklyAverage)}. Aim to stay under this amount.`
+      `Weekly spending average: ${formatCurrency(weeklyAverage)}. Use this for weekly budget planning. Set aside cash for weekly expenses.`,
+      `Your weekly average is ${formatCurrency(weeklyAverage)}. Set weekly spending limits based on this. Track daily to stay on target.`,
+      `Average weekly spend: ${formatCurrency(weeklyAverage)}. Track against this each week. Use the envelope method for categories.`,
+      `Weekly baseline: ${formatCurrency(weeklyAverage)}. Aim to stay under this amount. Review and adjust weekly for better control.`
     ];
     insights.push({
       type: 'info',
@@ -893,10 +893,10 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
     
     if (yearsToFreedom < 50 && yearsToFreedom > 0) {
       const freedomMessages = [
-        `At current savings rate, financial freedom in ~${yearsToFreedom.toFixed(0)} years. Increase savings to accelerate!`,
-        `Freedom timeline: ${yearsToFreedom.toFixed(0)} years at current pace. Boost savings to retire earlier.`,
-        `Financial independence in ${yearsToFreedom.toFixed(0)} years if you maintain this savings rate.`,
-        `Path to freedom: ${yearsToFreedom.toFixed(0)} years. Every 1% savings increase shaves time off this.`
+        `At current savings rate, financial freedom in ~${yearsToFreedom.toFixed(0)} years. Increase savings to accelerate! Consider side income for faster progress.`,
+        `Freedom timeline: ${yearsToFreedom.toFixed(0)} years at current pace. Boost savings to retire earlier. Every 1% increase shaves off years.`,
+        `Financial independence in ${yearsToFreedom.toFixed(0)} years if you maintain this savings rate. Invest wisely to compound returns.`,
+        `Path to freedom: ${yearsToFreedom.toFixed(0)} years. Every 1% savings increase shaves time off this. Consider geographic arbitrage to accelerate.`
       ];
       insights.push({
         type: 'tip',
@@ -914,34 +914,34 @@ export const generateInsights = (expenses: Expense[], income: Income[] = []): In
   let healthMessage = '';
   if (healthScore >= 80) {
     const excellentMessages = [
-      'Excellent financial health! Your spending is well-balanced and optimized.',
-      'Great job! Your finances are in excellent shape with smart spending habits.',
-      'Your financial health is excellent! Keep up the balanced spending approach.',
-      'Outstanding! Your money management shows excellent balance and control.'
+      'Excellent financial health! Your spending is well-balanced and optimized. Consider increasing investments to grow wealth.',
+      'Great job! Your finances are in excellent shape with smart spending habits. Focus on tax optimization now.',
+      'Your financial health is excellent! Keep up the balanced spending approach. Explore additional income streams.',
+      'Outstanding! Your money management shows excellent balance and control. Consider charitable giving for tax benefits.'
     ];
     healthMessage = excellentMessages[Math.floor(Math.random() * excellentMessages.length)];
   } else if (healthScore >= 60) {
     const goodMessages = [
-      'Good financial health with room for optimization in key areas.',
-      'Your finances are in good shape. Small tweaks could make them even better.',
-      'Solid financial health! A few adjustments could improve your money management.',
-      'Doing well financially! Focus on a couple of areas to reach excellent status.'
+      'Good financial health with room for optimization in key areas. Focus on increasing savings rate.',
+      'Your finances are in good shape. Small tweaks could make them even better. Review subscriptions and recurring costs.',
+      'Solid financial health! A few adjustments could improve your money management. Consider automating savings.',
+      'Doing well financially! Focus on a couple of areas to reach excellent status. Build an emergency fund if not complete.'
     ];
     healthMessage = goodMessages[Math.floor(Math.random() * goodMessages.length)];
   } else if (healthScore >= 40) {
     const moderateMessages = [
-      'Moderate financial health. Focus on reducing category concentration.',
-      'Your finances need some attention. Try to spread spending across more categories.',
-      'Fair financial health. Work on balancing your spending categories for improvement.',
-      'Room for improvement. Diversify your spending to boost your financial health.'
+      'Moderate financial health. Focus on reducing category concentration. Set category-specific budgets.',
+      'Your finances need some attention. Try to spread spending across more categories. Track expenses for 30 days.',
+      'Fair financial health. Work on balancing your spending categories for improvement. Use the 50/30/20 rule.',
+      'Room for improvement. Diversify your spending to boost your financial health. Focus on building an emergency fund.'
     ];
     healthMessage = moderateMessages[Math.floor(Math.random() * moderateMessages.length)];
   } else {
     const needsAttentionMessages = [
-      'Financial health needs attention. Prioritize budget planning and expense tracking.',
-      'Your finances need work. Start with a budget and track every expense carefully.',
-      'Time to focus on finances. Budget planning and tracking will help improve this score.',
-      'Financial health requires attention. Create a budget and monitor your spending habits.'
+      'Financial health needs attention. Prioritize budget planning and expense tracking. Start with a zero-based budget.',
+      'Your finances need work. Start with a budget and track every expense carefully. Use the envelope method for control.',
+      'Time to focus on finances. Budget planning and tracking will help improve this score. Consider a spending freeze for 30 days.',
+      'Financial health requires attention. Create a budget and monitor your spending habits. Focus on essential expenses only.'
     ];
     healthMessage = needsAttentionMessages[Math.floor(Math.random() * needsAttentionMessages.length)];
   }

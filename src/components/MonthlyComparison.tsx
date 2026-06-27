@@ -42,12 +42,12 @@ export function MonthlyComparison({ expenses, currency }: MonthlyComparisonProps
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="grid grid-cols-3 gap-3">
           {months.map((month, index) => (
-            <div key={index} className="text-center flex-1">
+            <div key={index} className="min-w-0 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{month.name}</p>
-              <p className="text-lg font-semibold text-slate-800 dark:text-white">
-                {formatCurrency(month.amount)}
+              <p className="text-[clamp(0.9rem,1.25vw,1.125rem)] leading-tight font-semibold text-slate-800 dark:text-white tabular-nums whitespace-nowrap overflow-hidden text-ellipsis">
+                {formatCurrency(month.amount, currency)}
               </p>
             </div>
           ))}

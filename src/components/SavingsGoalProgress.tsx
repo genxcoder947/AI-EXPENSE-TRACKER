@@ -32,10 +32,10 @@ export function SavingsGoalProgress({ expenses, income, currency }: SavingsGoalP
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg p-5 border border-emerald-200 dark:border-emerald-800">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <span className="text-base font-medium text-emerald-900 dark:text-emerald-400">Total Savings</span>
-            <span className="text-2xl font-bold text-emerald-900 dark:text-emerald-400">
-              {formatCurrency(netSavings)}
+            <span className="min-w-0 text-[clamp(1.125rem,1.8vw,1.5rem)] leading-tight font-bold text-emerald-900 dark:text-emerald-400 tabular-nums whitespace-nowrap overflow-hidden text-ellipsis">
+              {formatCurrency(netSavings, currency)}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
@@ -64,7 +64,7 @@ export function SavingsGoalProgress({ expenses, income, currency }: SavingsGoalP
                     />
                   </div>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    {progress.toFixed(0)}% of {formatCurrency(goal.target)}
+                    {progress.toFixed(0)}% of {formatCurrency(goal.target, currency)}
                   </p>
                 </div>
               </div>
